@@ -191,7 +191,7 @@ namespace mhcpp
 		public:
 
 			SubComplex(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, int q, int alpha,
-				IRandomNumberGeneratorFactory rng, ICandidateFactory<T> * candidateFactory, RngInt& discreteRng, 
+				IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T> * candidateFactory, RngInt<>& discreteRng, 
 				IFitnessAssignment<double, T> fitnessAssignment, SceOptions options = SceOptions::RndInSubComplex, double contractionRatio = 0.5, double reflectionRatio = -1.0)
 			{
 				Init(complexPopulation, evaluator, q, alpha, rng, candidateFactory, fitnessAssignment, options, contractionRatio, reflectionRatio, discreteRng);
@@ -310,14 +310,14 @@ namespace mhcpp
 			double ReflectionRatio;
 			Complex<T>* complex = nullptr;
 			int alpha, q;
-			IRandomNumberGeneratorFactory rng;
+			IRandomNumberGeneratorFactory<> rng;
 			ICandidateFactory<T> * cf = nullptr;
-			RngInt * discreteRng = nullptr;
+			RngInt<> * discreteRng = nullptr;
 
 			void Init(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, int q, int alpha,
-				IRandomNumberGeneratorFactory rng, ICandidateFactory<T> * candidateFactory,
+				IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T> * candidateFactory,
 				IFitnessAssignment<double, T> fitnessAssignment, SceOptions options, 
-				double contractionRatio, double reflectionRatio, RngInt& discreteRng)
+				double contractionRatio, double reflectionRatio, RngInt<>& discreteRng)
 			{
 				this->options = options;
 				this->evaluator = evaluator;
@@ -671,8 +671,8 @@ namespace mhcpp
 			int q = 10;
 			int alpha = 2;
 			int beta = 3;
-			RngInt discreteGenerator;
-			IRandomNumberGeneratorFactory rng;
+			RngInt<> discreteGenerator;
+			IRandomNumberGeneratorFactory<> rng;
 			ICandidateFactory<T> * candidateFactory = nullptr;
 			IFitnessAssignment<double, T> fitnessAssignment;
 			// IHyperCubeOperations* hyperCubeOps;
@@ -719,7 +719,7 @@ namespace mhcpp
 			string ComplexId;
 
 			Complex(const std::vector<IObjectiveScores<T>>& scores, 
-				IObjectiveEvaluator<T>* evaluator, IRandomNumberGeneratorFactory rng, ICandidateFactory<T>* candidateFactory,
+				IObjectiveEvaluator<T>* evaluator, IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T>* candidateFactory,
 				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T> * terminationCondition,
 				ILoggerMh* logger = nullptr, std::map<string, string> tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) 
@@ -790,7 +790,7 @@ namespace mhcpp
 				ICandidateFactory<T>* populationInitializer,
 				ITerminationCondition<T>* terminationCondition,
 				const SceParameters& sceParameters,
-				IRandomNumberGeneratorFactory rng = IRandomNumberGeneratorFactory(),
+				IRandomNumberGeneratorFactory<> rng = IRandomNumberGeneratorFactory<>(),
 				IFitnessAssignment<double, T> fitnessAssignment = IFitnessAssignment<double, T>(),
 				const std::map<string, string>& logTags = std::map<string, string>())
 			{
@@ -814,7 +814,7 @@ namespace mhcpp
 			void Init(IObjectiveEvaluator<T>* evaluator,
 				ICandidateFactory<T>* populationInitializer,
 				ITerminationCondition<T>* terminationCondition,
-				IRandomNumberGeneratorFactory rng,
+				IRandomNumberGeneratorFactory<> rng,
 				IFitnessAssignment<double, T> fitnessAssignment,
 				int p = 5,
 				int pmin = 5,
@@ -916,7 +916,7 @@ namespace mhcpp
 			IObjectiveEvaluator<T>* evaluator;
 			ICandidateFactory<T>* populationInitializer;
 			ITerminationCondition<T>* terminationCondition;
-			IRandomNumberGeneratorFactory rng;
+			IRandomNumberGeneratorFactory<> rng;
 			IFitnessAssignment<double, T> fitnessAssignment;
 			double trapezoidalPdfParam;
 

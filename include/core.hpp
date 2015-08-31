@@ -212,7 +212,7 @@ namespace mhcpp
 		public ICandidateFactory < TSysConfig >
 	{
 	public:
-		UniformRandomSamplingFactory(const IRandomNumberGeneratorFactory& rng, const TSysConfig& t)
+		UniformRandomSamplingFactory(const IRandomNumberGeneratorFactory<>& rng, const TSysConfig& t)
 		{
 			this->rng = rng;
 			unsigned int samplerSeed = UniformRandomSamplingFactory::CreateSamplerSeed(rng);
@@ -328,7 +328,7 @@ namespace mhcpp
 
 	private:
 
-		static unsigned int CreateSamplerSeed(const IRandomNumberGeneratorFactory& rng)
+		static unsigned int CreateSamplerSeed(const IRandomNumberGeneratorFactory<>& rng)
 		{
 			auto tmp_rng = rng;
 			unsigned int s = tmp_rng.Next();
@@ -352,7 +352,7 @@ namespace mhcpp
 		//}
 
 		VariateGenerator<std::default_random_engine, std::uniform_real_distribution<double>> sampler;
-		IRandomNumberGeneratorFactory rng;
+		IRandomNumberGeneratorFactory<> rng;
 		TSysConfig t;
 	};
 
@@ -527,7 +527,9 @@ namespace mhcpp
 		return centroid;
 	}
 
-	double Reflect(double point, double reference, double factor)
+
+	template<typename T>
+	T Reflect(T point, T reference, T factor)
 	{
 		return reference + ((point - reference) * factor);
 	}
@@ -546,7 +548,7 @@ namespace mhcpp
 	}
 
 	template<typename T>
-	class HyperCube : public IHyperCube < T > //where T : IComparable
+	class HyperCube : public IHyperCubeSetBounds < T > //where T : IComparable
 	{
 	public:
 		HyperCube() {}
@@ -558,7 +560,7 @@ namespace mhcpp
 		vector<string> GetVariableNames() const {
 			return mhcpp::utils::GetKeys(def);
 		}
-		void Define(string name, double min, double max, double value) {
+		void Define(string name, T min, T max, T value) {
 			def[name] = MMV(name, min, max, value);
 		}
 		size_t Dimensions() const { return def.size(); }
@@ -568,6 +570,11 @@ namespace mhcpp
 		void SetValue(string variableName, T value)    { def[variableName].Value = value; }
 		void SetMinValue(string variableName, T value) { def[variableName].Min = value; }
 		void SetMaxValue(string variableName, T value) { def[variableName].Max = value; }
+		void SetMinMaxValue(string variableName, T min, T max, T value) {
+			SetMinValue(variableName, min);
+			SetMaxValue(variableName, max);
+			SetValue(variableName, value);
+		}
 		//IHyperCube<T> HomotheticTransform(IHyperCube<T> point, double factor) {}
 		string GetConfigurationDescription() const { return ""; }
 		void ApplyConfiguration(void* system) {}
@@ -577,7 +584,7 @@ namespace mhcpp
 			return mhcpp::GetCentroid<HyperCube<T>>(points);
 		}
 
-		HyperCube HomotheticTransform(const HyperCube& from, double factor)
+		HyperCube HomotheticTransform(const HyperCube& from, T factor)
 		{
 			return mhcpp::HomotheticTransform<HyperCube<T>>(*this, from, factor);
 		}
@@ -637,7 +644,8 @@ namespace mhcpp
 
 	namespace utils{
 
-		bool CheckParameterFeasible(const IObjectiveScores<HyperCube<double>>& s)
+		template<typename TSysConf = HyperCube<double>>
+		bool CheckParameterFeasible(const IObjectiveScores<TSysConf>& s)
 		{
 			if (!s.SystemConfiguration().IsFeasible())
 			{
@@ -648,7 +656,8 @@ namespace mhcpp
 			return true;
 		}
 
-		bool CheckParameterFeasible(const HyperCube<double>& p)
+		template<typename TSysConf = HyperCube<double>>
+		bool CheckParameterFeasible(const TSysConf& p)
 		{
 			if (!p.IsFeasible())
 			{
@@ -659,7 +668,8 @@ namespace mhcpp
 			return true;
 		}
 
-		bool CheckParameterFeasible(const std::vector<IObjectiveScores<HyperCube<double>>>& vec)
+		template<typename TSysConf = HyperCube<double>>
+		bool CheckParameterFeasible(const std::vector<IObjectiveScores<TSysConf>>& vec)
 		{
 			for (size_t i = 0; i < vec.size(); i++)
 			{
@@ -668,12 +678,14 @@ namespace mhcpp
 			return true;
 		}
 
-		bool CheckParameterFeasible(const FitnessAssignedScores<double, HyperCube<double>>& p)
+		template<typename TSysConf = HyperCube<double>>
+		bool CheckParameterFeasible(const FitnessAssignedScores<double, TSysConf>& p)
 		{
 			return CheckParameterFeasible(p.Scores());
 		}
 
-		bool CheckParameterFeasible(const std::vector<FitnessAssignedScores<double, HyperCube<double>>>& vec)
+		template<typename TSysConf = HyperCube<double>>
+		bool CheckParameterFeasible(const std::vector<FitnessAssignedScores<double, TSysConf>>& vec)
 		{
 			for (size_t i = 0; i < vec.size(); i++)
 			{

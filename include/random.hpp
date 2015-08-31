@@ -88,25 +88,28 @@ namespace mhcpp
 #if GCC_VERSION < 40800
 		typedef VariateGenerator < std::default_random_engine, std::discrete_distribution<int> > RngInt;
 #else
-		using RngInt = VariateGenerator < std::default_random_engine, std::discrete_distribution<int> >;
+		template <typename RNG = std::default_random_engine>
+		using RngInt = VariateGenerator < RNG, std::discrete_distribution<int> >;
 #endif
 #else
-		using RngInt = VariateGenerator < std::default_random_engine, std::discrete_distribution<int> >;
+		template <typename RNG = std::default_random_engine>
+		using RngInt = VariateGenerator < RNG, std::discrete_distribution<int> >;
 #endif
 
+		template<typename RNG = std::default_random_engine>
 		class IRandomNumberGeneratorFactory
 		{
 
 		private:
 			/** \brief	A random number generator factory. */
 
-			template<typename RNG = std::default_random_engine>
+			template<typename RngEngine = std::default_random_engine>
 			class RandomNumberGeneratorFactory
 			{
 			private:
-				RNG seedEngine;
+				RngEngine seedEngine;
 			public:
-				typedef RNG engine_type; // No typename needed here. See http://stackoverflow.com/questions/6489351/nested-name-specifier
+				typedef RngEngine engine_type; // No typename needed here. See http://stackoverflow.com/questions/6489351/nested-name-specifier
 				//	http://stackoverflow.com/questions/495021/why-can-templates-only-be-implemented-in-the-header-file
 
 				RandomNumberGeneratorFactory(int seed) : seedEngine(seed)
@@ -154,14 +157,14 @@ namespace mhcpp
 					return seedEngine == (other.seedEngine);
 				}
 
-				RNG * CreateNewEngine()
+				RngEngine * CreateNewEngine()
 				{
-					return new RNG(seedEngine());
+					return new RngEngine(seedEngine());
 				}
 
-				RandomNumberGeneratorFactory<RNG> * CreateNewFactory()
+				RandomNumberGeneratorFactory<RngEngine> * CreateNewFactory()
 				{
-					return new RandomNumberGeneratorFactory<RNG>(seedEngine());
+					return new RandomNumberGeneratorFactory<RngEngine>(seedEngine());
 				}
 
 				unsigned int operator()() {
@@ -169,9 +172,9 @@ namespace mhcpp
 				}
 
 				template<class DistributionType = std::uniform_real_distribution<double>>
-				static VariateGenerator<RNG*, DistributionType> * CreateVariateGenerator(RandomNumberGeneratorFactory<RNG>& rngf, DistributionType& dist)
+				static VariateGenerator<RngEngine*, DistributionType> * CreateVariateGenerator(RandomNumberGeneratorFactory<RngEngine>& rngf, DistributionType& dist)
 				{
-					return new VariateGenerator<RNG*, DistributionType>(rngf.CreateNewEngine(), dist);
+					return new VariateGenerator<RngEngine*, DistributionType>(rngf.CreateNewEngine(), dist);
 				}
 
 			};
@@ -265,7 +268,8 @@ namespace mhcpp
 			}
 		};
 
-		RngInt CreateTrapezoidalRng(size_t n, const std::default_random_engine& generator, double trapezoidalFactor = -1)
+		template<typename RNG = std::default_random_engine>
+		RngInt<RNG> CreateTrapezoidalRng(size_t n, const RNG& generator, double trapezoidalFactor = -1)
 		{
 			std::vector<double> weights(n);
 			double m = n;
@@ -316,7 +320,8 @@ namespace mhcpp
 			return result;
 		}
 
-		vector<int> SampleFrom(RngInt& drng, size_t nsampling)
+		template<typename RNG = std::default_random_engine>
+		vector<int> SampleFrom(RngInt<RNG>& drng, size_t nsampling)
 		{
 			size_t size = drng.distribution().max() - drng.distribution().min() + 1;
 			std::vector<int>p(size);
@@ -329,7 +334,7 @@ namespace mhcpp
 		}
 
 		template<typename ElemType>
-		vector<ElemType> SampleFrom(RngInt& drng, const std::vector<ElemType>& population, size_t n,
+		vector<ElemType> SampleFrom(RngInt<>& drng, const std::vector<ElemType>& population, size_t n,
 			vector<ElemType>& leftOut, bool replace = false)
 		{
 			if (!replace && population.size() <= n)

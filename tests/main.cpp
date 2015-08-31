@@ -7,8 +7,7 @@
 #include <iostream>
 #include <iterator>
 #include "catch.hpp"
-#include "../include/core.hpp"
-#include "../include/sce.hpp"
+#include "common.h"
 
 using namespace std;
 using namespace mhcpp;
@@ -16,13 +15,6 @@ using namespace mhcpp::random;
 using namespace mhcpp::optimization;
 using namespace mhcpp::utils;
 
-
-HyperCube<double> createTestHc(double a, double b, double aMin = 1, double bMin = 3, double aMax = 2, double bMax = 4) {
-	HyperCube<double> hc;
-	hc.Define("a", aMin, aMax, a);
-	hc.Define("b", bMin, bMax, b);
-	return hc;
-}
 
 SCENARIO("Basic hypercubes", "[sysconfig]") {
 
@@ -62,102 +54,6 @@ SCENARIO("Basic hypercubes", "[sysconfig]") {
 		}
 	}
 }
-
-bool assertHyperCube(const HyperCube<double>& hc, double a, double b, double tolerance = 1.0e-9)
-{
-	return
-		(hc.Dimensions() == 2) &&
-		(std::abs(hc.GetValue("a") - a) < tolerance) &&
-		(std::abs(hc.GetValue("b") - b) < tolerance);
-}
-
-bool isIn(const std::string& s, const std::vector<std::string>& b)
-{
-	return (std::find(b.begin(), b.end(), s) != b.end());
-}
-
-bool allIn(const std::vector<std::string>& a, const std::vector<std::string>& b)
-{
-	for (auto s : a)
-	{
-		if (!isIn(s, b))
-			return false;
-	}
-	return true;
-}
-
-bool sameSets(const std::vector<std::string>& a, const std::vector<std::string>& b)
-{
-	if (a.size() != b.size()) return false;
-	if (!allIn(a, b)) return false;
-	if (!allIn(b, a)) return false;
-	return true;
-}
-
-bool sameValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b)
-{
-	for (auto& s : keys)
-		if (a.GetValue(s) != b.GetValue(s)) 
-			return false;
-	return true;
-}
-
-bool sameMinValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b)
-{
-	for (auto& s : keys)
-		if (a.GetMinValue(s) != b.GetMinValue(s))
-			return false;
-	return true;
-}
-
-bool sameMaxValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b)
-{
-	for (auto& s : keys)
-		if (a.GetMaxValue(s) != b.GetMaxValue(s))
-			return false;
-	return true;
-}
-
-bool assertEqual(const HyperCube<double>& a, const HyperCube<double>& b)
-{
-	return
-		(a.Dimensions() == b.Dimensions()) &&
-		(sameSets(a.GetVariableNames(), b.GetVariableNames())) &&
-		(sameValues(a.GetVariableNames(), a, b)) &&
-		(sameMinValues(a.GetVariableNames(), a, b)) &&
-		(sameMaxValues(a.GetVariableNames(), a, b));
-}
-
-bool assertValuesNotEqual(const HyperCube<double>& a, const HyperCube<double>& b)
-{
-	return
-		(a.Dimensions() == b.Dimensions()) &&
-		(sameSets(a.GetVariableNames(), b.GetVariableNames())) &&
-		(!sameValues(a.GetVariableNames(), a, b));
-}
-
-template<typename T>
-bool requireEqual(const vector<T>& a, const vector<T>& b)
-{
-	if (a.size() != b.size()) return false;
-	for (size_t i = 0; i < a.size(); i++)
-	{
-		if (a[i] != b[i]) return false;
-	}
-	return true;
-}
-
-template<typename T>
-bool requireRelativeEqual(const vector<T>& expected, const vector<T>& b, T tolerance)
-{
-	if (expected.size() != b.size()) return false;
-	for (size_t i = 0; i < expected.size(); i++)
-	{
-		if ((std::abs(expected[i] - b[i]) / expected[i]) > tolerance) return false;
-	}
-	return true;
-}
-
 
 SCENARIO("Calculation of a centroid", "[sysconfig]") {
 
@@ -203,11 +99,11 @@ SCENARIO("Basic objective evaluator", "[objectives]") {
 }
 
 SCENARIO("RNG basics", "[rng]") {
-	IRandomNumberGeneratorFactory factory(123);
-	GIVEN("A random integer generator IRandomNumberGeneratorFactory")
+	IRandomNumberGeneratorFactory<> factory(123);
+	GIVEN("A random integer generator IRandomNumberGeneratorFactory<>")
 	{
 		WHEN("Another is created with a different seed") {
-			IRandomNumberGeneratorFactory f2(456);
+			IRandomNumberGeneratorFactory<> f2(456);
 			THEN("The sequence of random numbers is different")
 			{
 				REQUIRE_FALSE(factory.Equals(f2));
@@ -219,7 +115,7 @@ SCENARIO("RNG basics", "[rng]") {
 			}
 		}
 		WHEN("A copy is created by assignment") {
-			IRandomNumberGeneratorFactory f2 = factory;
+			IRandomNumberGeneratorFactory<> f2 = factory;
 			THEN("The sequence of random numbers is the same")
 			{
 				REQUIRE(factory.Equals(f2));
@@ -237,7 +133,7 @@ SCENARIO("trapezoidal, discrete RNG to sample from a population of points, as us
 {
 	std::default_random_engine generator(234);
 	const int ncandidates = 10;
-	RngInt rng = CreateTrapezoidalRng(ncandidates, generator);
+	RngInt<> rng = CreateTrapezoidalRng(ncandidates, generator);
 
 	const int nrolls = 100000; // number of experiments
 	auto p = SampleFrom(rng, nrolls);
@@ -265,7 +161,7 @@ SCENARIO("URS RNG basics", "[rng]") {
 	hc.Define("b", 3, 4, 3.3);
 	GIVEN("An uniform random sampler")
 	{
-		auto rng = UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory(), hc);
+		auto rng = UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory<>(), hc);
 
 		WHEN("Creating a random point with default template") {
 			HyperCube<double> p = rng.CreateRandomCandidate();
@@ -317,34 +213,11 @@ SCENARIO("URS RNG basics", "[rng]") {
 	}
 }
 
-template<typename T>
-UniformRandomSamplingFactory<T> createTestUnifrand(int seed = 0)
-{
-	IRandomNumberGeneratorFactory rng(seed);
-	HyperCube<double> goal = createTestHc(1.5, 3.4);
-	UniformRandomSamplingFactory<T> prand(rng, goal);
-	return prand;
-}
-
-template<typename T>
-std::vector < IObjectiveScores<T> >createTestScores(int m, int seed = 0)
-{
-	std::vector < IObjectiveScores<T> > scores;
-	auto prand = createTestUnifrand<T>();
-	HyperCube<double> goal = createTestHc(1.5, 3.4);
-	TopologicalDistance<T> evaluator(goal);
-
-	for (size_t i = 0; i < m; i++)
-		scores.push_back(evaluator.EvaluateScore(prand.CreateRandomCandidate()));
-
-	return scores;
-}
-
 SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 	using T = HyperCube < double >;
 	int m = 20;
 	int q = 10, alpha = 2, beta = 3;
-	IRandomNumberGeneratorFactory rng(2);
+	IRandomNumberGeneratorFactory<> rng(2);
 	auto unif = createTestUnifrand<T>(421);
 
 	std::vector < IObjectiveScores<T> > scores = createTestScores<T>(m, 123);
@@ -407,31 +280,6 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 	}
 }
 
-template<typename T>
-class CounterTestFinished
-{
-	int counter = 0;
-	int maxChecks = 0;
-public:
-	CounterTestFinished(int maxChecks)
-	{
-		this->maxChecks = maxChecks;
-	}
-	bool IsFinished(IEvolutionEngine<T>* engine)
-	{
-		counter++;
-		return (counter >= maxChecks);
-	}
-
-	std::function<bool(IEvolutionEngine<T>*)> CreateNew(CounterTestFinished& c)
-	{
-		return [&c](IEvolutionEngine<T>* e)
-		{
-			return c.IsFinished(e);
-		};
-	}
-};
-
 SCENARIO("SCE basic port", "[optimizer]") {
 
 	GIVEN("A 2D Hypercube")
@@ -449,7 +297,7 @@ SCENARIO("SCE basic port", "[optimizer]") {
 		goal.Define("a", 1, 2, 1);
 		goal.Define("b", 3, 4, 3);
 		TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
-		ICandidateFactory<HyperCube < double > >* populationInitializer = new UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory(), hc);
+		ICandidateFactory<HyperCube < double > >* populationInitializer = new UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory<>(), hc);
 
 		CounterTestFinished<HyperCube<double>> c(100);
 		auto fFunc = c.CreateNew(c);
