@@ -166,6 +166,8 @@ namespace mhcpp
 
 		virtual double Value(int i) const { return objectives[i].Value; } //= 0;
 
+		virtual bool Maximizable(int i) const { return objectives[i].Maximizable; } //= 0;
+
 		string ToString() const
 		{
 			string s;
@@ -487,7 +489,12 @@ namespace mhcpp
 		{
 			std::vector<FitnessAssignedScores<TVal, TSys>> result;
 			for (IObjectiveScores<TSys> s : scores)
-				result.push_back(FitnessAssignedScores<TVal, TSys>(s, s.Value(0)));
+			{
+				if (s.ObjectiveCount() > 1)
+					throw std::logic_error("Fitness score for multiple objective is not yet supported.");
+				TVal scoreVal = s.Value(0);
+				result.push_back(FitnessAssignedScores<TVal, TSys>(s, s.Maximizable(0) ? -scoreVal : scoreVal));
+			}
 			return result;
 		}
 	};

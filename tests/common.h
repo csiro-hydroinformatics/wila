@@ -61,7 +61,7 @@ std::vector < IObjectiveScores<T> >createTestScores(int m, int seed = 0)
 	return scores;
 }
 
-template<typename T>
+template<typename TSys>
 class CounterTestFinished
 {
 	int counter = 0;
@@ -71,18 +71,17 @@ public:
 	{
 		this->maxChecks = maxChecks;
 	}
-	bool IsFinished(IEvolutionEngine<T>* engine)
+	bool IsFinished(IEvolutionEngine<TSys>* engine)
 	{
 		counter++;
 		return (counter >= maxChecks);
 	}
 
-	std::function<bool(IEvolutionEngine<T>*)> CreateNew(CounterTestFinished& c)
+	std::function<bool(IEvolutionEngine<TSys>*)> CreateNew(CounterTestFinished& c)
 	{
-		return [&c](IEvolutionEngine<T>* e)
+		return [&c](IEvolutionEngine<TSys>* e)
 		{
 			return c.IsFinished(e);
 		};
 	}
 };
-
