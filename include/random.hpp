@@ -37,7 +37,7 @@ namespace mhcpp
 			VariateGenerator(const VariateGenerator& vg)
 				: _eng(vg._eng), _dist(vg._dist) { }
 
-			VariateGenerator(const VariateGenerator&& vg)
+			VariateGenerator(VariateGenerator&& vg)
 			{
 				this->_eng = std::move(vg._eng);
 				this->_dist = std::move(vg._dist);
@@ -53,7 +53,7 @@ namespace mhcpp
 				return *this;
 			}
 
-			VariateGenerator& operator=(const VariateGenerator&& vg)
+			VariateGenerator& operator=(VariateGenerator&& vg)
 			{
 				if (&vg == this) {
 					return *this;
@@ -122,7 +122,7 @@ namespace mhcpp
 					this->seedEngine = src.seedEngine;
 				}
 
-				RandomNumberGeneratorFactory(const RandomNumberGeneratorFactory&& src)
+				RandomNumberGeneratorFactory(RandomNumberGeneratorFactory&& src)
 				{
 					this->seedEngine = std::move(src.seedEngine);
 				}
@@ -136,7 +136,7 @@ namespace mhcpp
 					return *this;
 				}
 
-				RandomNumberGeneratorFactory& operator = (const RandomNumberGeneratorFactory&& src)
+				RandomNumberGeneratorFactory& operator = (RandomNumberGeneratorFactory&& src)
 				{
 					if (&src == this) {
 						return *this;
@@ -192,7 +192,7 @@ namespace mhcpp
 				this->rng = src.rng;
 			}
 
-			IRandomNumberGeneratorFactory(const IRandomNumberGeneratorFactory&& src)
+			IRandomNumberGeneratorFactory(IRandomNumberGeneratorFactory&& src)
 			{
 				this->rng = std::move(src.rng);
 			}
@@ -206,7 +206,7 @@ namespace mhcpp
 				return *this;
 			}
 
-			IRandomNumberGeneratorFactory& operator = (const IRandomNumberGeneratorFactory&& src)
+			IRandomNumberGeneratorFactory& operator = (IRandomNumberGeneratorFactory&& src)
 			{
 				if (&src == this) {
 					return *this;

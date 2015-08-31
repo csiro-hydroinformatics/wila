@@ -144,7 +144,7 @@ namespace mhcpp
 			return *this;
 		}
 
-		IObjectiveScores<TSysConf>& operator=(const IObjectiveScores<TSysConf>&& src)
+		IObjectiveScores<TSysConf>& operator=(IObjectiveScores<TSysConf>&& src)
 		{
 			if (&src == this){
 				return *this;
@@ -231,7 +231,7 @@ namespace mhcpp
 			SetSampler(samplerSeed);
 		}
 
-		UniformRandomSamplingFactory(const UniformRandomSamplingFactory&& src)
+		UniformRandomSamplingFactory(UniformRandomSamplingFactory&& src)
 		{
 			this->rng = std::move(src.rng);
 			this->t = std::move(src.t);
@@ -249,7 +249,7 @@ namespace mhcpp
 			return *this;
 		}
 
-		UniformRandomSamplingFactory& operator=(const UniformRandomSamplingFactory&& src)
+		UniformRandomSamplingFactory& operator=(UniformRandomSamplingFactory&& src)
 		{
 			if (&src == this) {
 				return *this;
@@ -506,6 +506,45 @@ namespace mhcpp
 		virtual bool IsCloneable() { return false; }
 	};
 
+	template<typename THyperCube>
+	THyperCube GetCentroid(const std::vector<THyperCube>& points)
+	{
+		// TODO: surely some vector libraries to reuse (Boost?)
+		if (points.size() == 0) throw std::logic_error("Cannot take centroid of empty set of points");
+		vector<string> names = points[0].GetVariableNames();
+		vector<double> coords(names.size());
+		coords.assign(coords.size(), 0);
+		for (auto& p : points)
+			for (size_t i = 0; i < coords.size(); i++)
+				coords[i] += p.GetValue(names[i]);
+		for (size_t i = 0; i < coords.size(); i++)
+			coords[i] /= points.size();
+		THyperCube centroid = points[0];
+		for (size_t i = 0; i < coords.size(); i++)
+		{
+			centroid.SetValue(names[i], coords[i]);
+		}
+		return centroid;
+	}
+
+	double Reflect(double point, double reference, double factor)
+	{
+		return reference + ((point - reference) * factor);
+	}
+
+	template<typename THyperCube>
+	THyperCube HomotheticTransform(const THyperCube& centre, const THyperCube& from, double factor)
+	{
+		THyperCube result(from);
+		auto varnames = centre.GetVariableNames();
+		for (auto& v : varnames)
+		{
+			double newVal = mhcpp::Reflect(from.GetValue(v), centre.GetValue(v), factor);
+			result.SetValue(v, newVal);
+		}
+		return result;
+	}
+
 	template<typename T>
 	class HyperCube : public IHyperCube < T > //where T : IComparable
 	{
@@ -535,49 +574,12 @@ namespace mhcpp
 
 		static HyperCube GetCentroid(const std::vector<HyperCube>& points)
 		{
-			// TODO: surely some vector libraries to reuse (Boost?)
-			if (points.size() == 0) throw std::logic_error("Cannot take centroid of empty set of points");
-			vector<string> names = points[0].GetVariableNames();
-			vector<double> coords(names.size());
-			coords.assign(coords.size(), 0);
-			for (auto& p : points)
-				for (size_t i = 0; i < coords.size(); i++)
-					coords[i] += p.GetValue(names[i]);
-			for (size_t i = 0; i < coords.size(); i++)
-				coords[i] /= points.size();
-			HyperCube centroid = points[0];
-			for (size_t i = 0; i < coords.size(); i++)
-			{
-				centroid.SetValue(names[i], coords[i]);
-			}
-			return centroid;
+			return mhcpp::GetCentroid<HyperCube<T>>(points);
 		}
 
 		HyperCube HomotheticTransform(const HyperCube& from, double factor)
 		{
-			HyperCube result(from);
-			auto varnames = GetVariableNames();
-			for (auto& v : varnames)
-			{
-				//double min = this->GetMinValue(v);
-				//double max = this->GetMaxValue(v);
-				//result.SetMinValue(v, min);
-				//result.SetMaxValue(v, max);
-				double newVal = Reflect(from.GetValue(v), this->GetValue(v), factor);
-				//var isInBounds = MetaheuristicsHelper.CheckInBounds(newVal, min, max, throwIfFalse: this->ThrowOnOutOfBounds);
-				//if (!isInBounds)
-				//{
-				//	result = null;
-				//	break;
-				//}
-				result.SetValue(v, newVal);
-			}
-			return result;
-		}
-
-		double Reflect(double point, double reference, double factor)
-		{
-			return reference + ((point - reference) * factor);
+			return mhcpp::HomotheticTransform<HyperCube<T>>(*this, from, factor);
 		}
 
 		virtual bool IsFeasible() const
