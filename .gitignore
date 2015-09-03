@@ -28,7 +28,7 @@
 *.app
 
 # VCPP output dirs
-./Debug/*
-./Release/*
-./tests/Debug/*
-./tests/Release/*
+Debug/*
+Release/*
+tests/Debug/*
+tests/Release/*
