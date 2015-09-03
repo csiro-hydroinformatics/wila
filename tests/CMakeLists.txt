@@ -32,6 +32,7 @@ INCLUDE_DIRECTORIES(
 ## section: source files
 # Add your source files here (one file per line), please SORT in alphabetical order for future maintenance
 SET (${this_target}_SOURCE_FILES
+    common.cpp
     main.cpp
 )
 
