@@ -30,3 +30,5 @@
 # VCPP output dirs
 ./Debug/*
 ./Release/*
+./tests/Debug/*
+./tests/Release/*
