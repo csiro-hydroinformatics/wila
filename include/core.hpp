@@ -209,6 +209,78 @@ namespace mhcpp
 
 	};
 
+	template<typename T>
+	class IOptimizationResults // : public std::vector < IObjectiveScores<T> >
+		//where T : ISystemConfiguration
+	{
+		std::vector<IObjectiveScores<T>> scores;
+
+	public:
+		typedef typename std::vector<IObjectiveScores<T>>::const_iterator const_iterator;
+		IOptimizationResults() {}
+
+		IOptimizationResults(const std::vector<IObjectiveScores<T>>& scores)
+		{
+			this->scores = scores;
+		}
+
+		IOptimizationResults(const IOptimizationResults& src)
+		{
+			this->scores = src.scores;
+		}
+
+		IOptimizationResults(const IOptimizationResults&& src)
+		{
+			this->scores = std::move(src.scores);
+		}
+
+		IOptimizationResults& operator=(const IOptimizationResults& src)
+		{
+			if (&src == this) {
+				return *this;
+			}
+			this->scores = src.scores;
+			return *this;
+		}
+
+		IOptimizationResults& operator=(const IOptimizationResults&& src)
+		{
+			if (&src == this) {
+				return *this;
+			}
+			this->scores = std::move(src.scores);
+			return *this;
+		}
+
+		size_t size() const
+		{
+			return scores.size();
+		}
+
+		const_iterator begin() const
+		{
+			return scores.begin();
+		}
+
+		const_iterator end() const
+		{
+			return scores.end();
+		}
+
+		const IObjectiveScores<T>& operator[](size_t index) const
+		{
+			return scores[index];
+		}
+
+		void PrintTo(std::ostream& stream)
+		{
+			int n = size();
+			for (size_t i = 0; i < n; ++i)
+				stream << i << ": " << scores[i].ToString() << std::endl;
+		}
+
+	};
+
 	template<typename TSysConfig>
 	class UniformRandomSamplingFactory : 
 		public ICandidateFactory < TSysConfig >
@@ -305,7 +377,7 @@ namespace mhcpp
 			TSysConfig bounds(t);
 			for (auto& vname : bounds.GetVariableNames())
 			{
-				double min = std::numeric_limits<double>::min();
+				double min = std::numeric_limits<double>::lowest();
 				double max = std::numeric_limits<double>::max();
 				for (size_t i = 0; i < population.size(); i++)
 				{
@@ -361,6 +433,7 @@ namespace mhcpp
 	template<typename T>
 	class IEvolutionEngine
 	{
+		virtual IOptimizationResults<T> Evolve() = 0;
 	};
 
 	template<typename T>
@@ -511,6 +584,13 @@ namespace mhcpp
 		/// <returns>An object with one or more objective scores</returns>
 		virtual IObjectiveScores<TSysConf> EvaluateScore(TSysConf systemConfiguration) = 0;
 		virtual bool IsCloneable() { return false; }
+	};
+
+	template<typename T, typename TSys>
+	class IPopulation
+	{
+	public:
+		virtual std::vector<FitnessAssignedScores<T, TSys>> Population() = 0;
 	};
 
 	template<typename THyperCube>
