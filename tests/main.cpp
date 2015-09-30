@@ -92,6 +92,7 @@ SCENARIO("Basic objective evaluator", "[objectives]") {
 			IObjectiveScores<HyperCube<double>> scores = evaluator.EvaluateScore(hc);
 			THEN("Gets one objective value with expected value"){
 				REQUIRE(scores.ObjectiveCount() == 1);
+				REQUIRE(scores.ObjectiveName(0) != "");
 				REQUIRE(scores.Value(0) == std::sqrt(0.25 + 0.09));
 			}
 		}

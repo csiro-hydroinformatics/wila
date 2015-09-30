@@ -164,6 +164,8 @@ namespace mhcpp
 		/// </summary>
 		virtual size_t ObjectiveCount() const { return this->objectives.size(); }
 
+		virtual std::string ObjectiveName(int i) const { return this->objectives[i].Name; }
+
 		virtual double Value(int i) const { return objectives[i].Value; } //= 0;
 
 		virtual bool Maximizable(int i) const { return objectives[i].Maximizable; } //= 0;
