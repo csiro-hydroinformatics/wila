@@ -511,7 +511,7 @@ namespace mhcpp
 		/// </summary>
 		/// <param name="systemConfiguration">candidate system configuration</param>
 		/// <returns>An object with one or more objective scores</returns>
-		virtual IObjectiveScores<TSysConf> EvaluateScore(TSysConf systemConfiguration) = 0;
+		virtual IObjectiveScores<TSysConf> EvaluateScore(const TSysConf& systemConfiguration) = 0;
 		virtual bool IsCloneable() { return false; }
 	};
 
@@ -635,7 +635,7 @@ namespace mhcpp
 		/// </summary>
 		/// <param name="systemConfiguration">candidate system configuration</param>
 		/// <returns>An object with one or more objective scores</returns>
-		IObjectiveScores<TSysConf> EvaluateScore(TSysConf systemConfiguration)
+		IObjectiveScores<TSysConf> EvaluateScore(const TSysConf& systemConfiguration)
 		{
 			double sumsqr = 0;
 			vector<string> varNames = goal.GetVariableNames();
