@@ -65,9 +65,15 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <!-- The following lines are specific to a project (SWIFT2), to benefit from existing 
+  path resolution mechanisms. May be generalized later on -->
+  <ImportGroup Label="CustomPropertySheets">
+    <Import Project="$(SolutionDir)/config/swift_dependencies_paths.props" Condition="exists('$(SolutionDir)/config/swift_dependencies_paths.props')" Label="SolutionCommonProps" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(BoostLibraryPath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(BoostPath)</IncludePath>
+    <LibraryPath>$(LibraryPath);$(BoostLibPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
