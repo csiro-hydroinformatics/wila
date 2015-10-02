@@ -1,9 +1,10 @@
 #pragma once
 
 #include <algorithm>
+#include "sce.h"
 #include "core.hpp"
 #include "evaluations.hpp"
-
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 namespace mhcpp
 {
@@ -37,78 +38,6 @@ namespace mhcpp
 		//	BasicOptimizationResults(const BasicOptimizationResults& src) {}
 		//	BasicOptimizationResults(const std::vector<IObjectiveScores<T>>& scores) {}
 		//};
-
-		class SceParameters
-		{
-		public:
-			SceParameters()
-			{
-				this->TrapezoidalDensityParameter = 1.9;
-				this->ReflectionRatio = -1.0;
-				this->ContractionRatio = 0.5;
-				// FIXME: the following is due to short timelines asked in the AWRA and related projects.
-				//this->ReflectionRatio = -0.8;
-				//this->ContractionRatio = 0.45;
-			}
-			/// <summary>
-			/// Number of geometrical transformation for each subcomplex
-			/// </summary>
-			int Alpha;
-			/// <summary>
-			/// Number of evolution steps taken by each sub-complex before shuffling occurs
-			/// </summary>
-			int Beta;
-			/// <summary>
-			/// Number of complexes
-			/// </summary>
-			int P = 5;
-			/// <summary>
-			/// Minimum number of complexes (populations of points)
-			/// </summary>
-			int Pmin = 3;
-			/// <summary>
-			/// Number of points per complex
-			/// </summary>
-			int M;
-			/// <summary>
-			/// Number of points per SUB-complex
-			/// </summary>
-			int Q;
-			int NumShuffle;
-			double TrapezoidalDensityParameter;
-
-			/// <summary>
-			/// The homothetic ratio used in the reflection phase of the complex evolution: default -1.0
-			/// </summary>
-			double ReflectionRatio;
-
-			/// <summary>
-			/// The homothetic ratio used in the contraction phase of the complex evolution: default 0.5
-			/// </summary>
-			double ContractionRatio;
-
-			static SceParameters CreateForProblemOfDimension(int n, int nshuffle)
-			{
-				if (n <= 0)
-					throw new std::logic_error("There must be at least one free parameter to calibrate");
-				SceParameters result;
-				result.M = 2 * n + 1;
-				result.Q = std::max(result.M - 2, 2);
-				result.Alpha = 1;
-				result.Beta = result.M;
-				result.NumShuffle = nshuffle;
-				return result;
-			}
-		};
-
-		enum SceOptions
-		{
-			None = 0x00,
-			ReflectionRandomization = 0x01,
-			RndInSubComplex = 0x02,
-			FutureOption_1 = 0x04,
-			FutureOption_2 = 0x08
-		};
 
 		template<typename T>
 		class Complex;
@@ -1301,7 +1230,7 @@ namespace mhcpp
 			{
 				if (maxHours <= 0)
 					return false;
-				ptime currentTime(second_clock::local_time());
+				boost::posix_time::ptime currentTime(boost::posix_time::second_clock::local_time());
 				double hoursElapsed = (currentTime - startTime).hours();
 				return (hoursElapsed >= maxHours);
 			}
@@ -1310,12 +1239,12 @@ namespace mhcpp
 			MaxWalltimeCheck(double maxHours)
 			{
 				(*this).maxHours = maxHours;
-				startTime = second_clock::local_time();
+				startTime = boost::posix_time::second_clock::local_time();
 			}
 
 		private:
 			double maxHours;
-			ptime startTime;
+			boost::posix_time::ptime startTime;
 		};
 
 		template<typename TSys>
