@@ -29,78 +29,6 @@ namespace mhcpp
 		using namespace mhcpp::logging;
 		using namespace mhcpp::objectives;
 
-		template<typename T>
-		class IOptimizationResults // : public std::vector < IObjectiveScores<T> >
-			//where T : ISystemConfiguration
-		{
-			std::vector<IObjectiveScores<T>> scores;
-
-		public:
-			typedef typename std::vector<IObjectiveScores<T>>::const_iterator const_iterator;
-			IOptimizationResults() {}
-
-			IOptimizationResults(const std::vector<IObjectiveScores<T>>& scores)
-			{
-				this->scores = scores;
-			}
-
-			IOptimizationResults(const IOptimizationResults& src)
-			{
-				this->scores = src.scores;
-			}
-
-			IOptimizationResults(const IOptimizationResults&& src)
-			{
-				this->scores = std::move(src.scores);
-			}
-
-			IOptimizationResults& operator=(const IOptimizationResults& src)
-			{
-				if (&src == this) {
-					return *this;
-				}
-				this->scores = src.scores;
-				return *this;
-			}
-
-			IOptimizationResults& operator=(const IOptimizationResults&& src)
-			{
-				if (&src == this) {
-					return *this;
-				}
-				this->scores = std::move(src.scores);
-				return *this;
-			}
-
-			size_t size() const
-			{
-				return scores.size();
-			}
-
-			const_iterator begin() const
-			{
-				return scores.begin();
-			}
-
-			const_iterator end() const
-			{
-				return scores.end();
-			}
-
-			const IObjectiveScores<T>& operator[](size_t index) const
-			{
-				return scores[index];
-			}
-
-			void PrintTo(std::ostream& stream)
-			{
-				int n = size();
-				for (size_t i = 0; i < n; ++i)
-					stream << i << ": " << scores[i].ToString() << std::endl;
-			}
-
-		};
-
 		//template<typename T>
 		//class BasicOptimizationResults : public IOptimizationResults<T>
 		//{
@@ -778,11 +706,10 @@ namespace mhcpp
 
 		};
 
-
 		template<typename T>
 		class ShuffledComplexEvolution
-			: public IEvolutionEngine<T>
-			// , IPopulation<double>
+			: public IEvolutionEngine<T>,
+			  public IPopulation<double, T>
 			//where T : ICloneableSystemConfiguration
 		{
 		public:
@@ -910,6 +837,11 @@ namespace mhcpp
 				return packageResults(complexes);
 			}
 
+			std::vector<FitnessAssignedScores<double, T>> Population()
+			{
+				if (complexes.size() == 0) return std::vector<FitnessAssignedScores<double, T>>();
+				return sortByFitness(aggregate(complexes));
+			}
 
 		private:
 			std::map<string, string> logTags;
@@ -1117,28 +1049,7 @@ namespace mhcpp
 			return false;
 			}
 			}
-
-			abstract class MaxWalltimeCheck
-			{
-			double maxHours;
-			Stopwatch stopWatch;
-
-			protected MaxWalltimeCheck(double maxHours)
-			{
-			this->maxHours = maxHours;
-			this->stopWatch = new Stopwatch();
-			stopWatch.Start();
-			}
-
-			bool HasReachedMaxTime()
-			{
-			if (this->maxHours <= 0)
-			return false;
-			double hoursElapsed = this->stopWatch.Elapsed.TotalHours;
-			return (this->maxHours < hoursElapsed);
-			}
-			}
-
+			
 			class MaxWalltimeTerminationCondition : MaxWalltimeCheck, ITerminationCondition<T>
 			{
 			MaxWalltimeTerminationCondition(double maxHours) : base(maxHours)
@@ -1381,14 +1292,86 @@ namespace mhcpp
 			*/
 
 			std::vector<FitnessAssignedScores<double, T>> PopulationAtShuffling;
+		};
 
-			std::vector<FitnessAssignedScores<double, T>> GetPopulation()
+		class MaxWalltimeCheck
+		{
+		public:
+			bool HasReachedMaxTime()
 			{
-				throw std::logic_error("Not implemented");
-				// if (complexes == nullptr) return null;
-				// return sortByFitness(aggregate(complexes));
+				if (maxHours <= 0)
+					return false;
+				ptime currentTime(second_clock::local_time());
+				double hoursElapsed = (currentTime - startTime).hours();
+				return (hoursElapsed >= maxHours);
 			}
 
+		protected:
+			MaxWalltimeCheck(double maxHours)
+			{
+				(*this).maxHours = maxHours;
+				startTime = second_clock::local_time();
+			}
+
+		private:
+			double maxHours;
+			ptime startTime;
+		};
+
+		template<typename TSys>
+		class MarginalImprovementTerminationCondition :
+			public ITerminationCondition<TSys>,
+			public MaxWalltimeCheck
+		{
+		public:
+			MarginalImprovementTerminationCondition(double maxHours, double tolerance, int cutoffNoImprovement) : MaxWalltimeCheck(maxHours)
+			{
+				this->maxHours = maxHours;
+				this->tolerance = tolerance;
+				this->maxConverge = cutoffNoImprovement;
+			}
+			bool IsFinished(IEvolutionEngine<TSys>* engine)
+			{
+				IPopulation<double, TSys>* sce = dynamic_cast<IPopulation<double, TSys>*>(engine);
+
+				if (HasReachedMaxTime())
+					return true;
+				auto currentPopulation = sce->Population();
+				if (currentPopulation.size() == 0)
+					return false;
+				double currentBest = currentPopulation[0].FitnessValue();
+				if (isnan(oldBest))
+				{
+					oldBest = currentBest;
+					return false;
+				}
+				if (abs(currentBest - oldBest) <= abs(oldBest * tolerance))
+				{
+					converge++;
+				}
+				else
+				{
+					converge = 0;
+				}
+				oldBest = currentBest;
+				if (converge > maxConverge)
+					return true;
+				return false;
+			}
+			std::function<bool(IEvolutionEngine<TSys>*)> CreateNew(MarginalImprovementTerminationCondition& mitc)
+			{
+				return [&mitc](IEvolutionEngine<TSys>* e)
+				{
+					return mitc.IsFinished(e);
+				};
+			}
+		private:
+			double maxHours;
+			double tolerance;
+			int maxConverge;
+
+			double oldBest = std::numeric_limits<double>::quiet_NaN();
+			int converge = 0;
 		};
 	}
 }
