@@ -262,6 +262,11 @@ namespace mhcpp
 			return *this;
 		}
 
+		operator std::vector<IObjectiveScores<T>>()
+		{
+			return this->scores;
+		}
+
 		size_t size() const
 		{
 			return scores.size();
@@ -724,8 +729,8 @@ namespace mhcpp
 		/// <param name="systemConfiguration">candidate system configuration</param>
 		/// <returns>An object with one or more objective scores</returns>
 		virtual IObjectiveScores<TSysConf> EvaluateScore(const TSysConf& systemConfiguration) = 0;
-		virtual bool IsCloneable() { return false; }
-		virtual IObjectiveEvaluator * Clone() 
+		virtual bool IsCloneable() const { return false; }
+		virtual IObjectiveEvaluator * Clone() const 
 		{ 
 			throw std::logic_error(string("Clone operation is not supported by default for ") + typeid(IObjectiveEvaluator<TSysConf>).name());
 		}
@@ -874,12 +879,12 @@ namespace mhcpp
 			return IObjectiveScores<TSysConf>(systemConfiguration, "L2 distance", std::sqrt(sumsqr));
 		}
 
-		bool IsCloneable() 
+		bool IsCloneable() const 
 		{ 
 			return true;
 		}
 
-		IObjectiveEvaluator<TSysConf> * Clone()
+		IObjectiveEvaluator<TSysConf> * Clone() const
 		{
 			return new TopologicalDistance(*this);
 		}
