@@ -914,8 +914,8 @@ namespace mhcpp
 				this->beta = src.beta;
 				this->numShuffle = src.numShuffle;
 				this->options = src.options;
-				this->ReflectionRatio = src.reflectionRatio;
-				this->ContractionRatio = src.contractionRatio;
+				this->ReflectionRatio = src.ReflectionRatio;
+				this->ContractionRatio = src.ContractionRatio;
 				this->logTags = src.logTags;
 				this->trapezoidalPdfParam = src.trapezoidalPdfParam;
 				this->fitnessAssignment = src.fitnessAssignment;
