@@ -16,7 +16,14 @@ using namespace mhcpp::optimization;
 using namespace mhcpp::utils;
 
 
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double>& goal, ITerminationCondition<HyperCube < double > >&terminationCondition)
+ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateCounterTermination(int maxCount)
+{
+	CounterTestFinished<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(maxCount);
+	ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition(c);
+	return terminationCondition;
+}
+
+ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
 {
 	HyperCube<double> hc;
 	hc.Define("a", 1, 2, 1.5);
@@ -31,8 +38,9 @@ ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double
 	goal.Define("b", 3, 4, 3);
 	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
 	ICandidateFactory<HyperCube < double > >* populationInitializer = new UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory<>(), hc);
+	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
 
-	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, populationInitializer, &terminationCondition, sceParams);
+	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
 	return opt;
 }
 
@@ -288,13 +296,14 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 	WHEN("Building and running a complex")
 	{
 		auto unif = createTestUnifrand<T>(421);
-		ITerminationCondition<HyperCube < double > > terminationCondition;
+		ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition;
+		terminationCondition.RequireEngine = false;
 
 		//Complex<T> cplx_noargs;
 
 		Complex<T> cplx
 			(scores, &evaluator, rng, &unif,
-			fitnessAssignment, &terminationCondition, nullptr, std::map<string, string>(), q, alpha, beta);
+			fitnessAssignment, terminationCondition, nullptr, std::map<string, string>(), q, alpha, beta);
 		THEN("The complex evolution completes without exception")
 		{
 			REQUIRE_NOTHROW(cplx.Evolve());
@@ -307,10 +316,8 @@ SCENARIO("SCE basic port", "[optimizer]") {
 
 	GIVEN("A 2D Hypercube")
 	{
-		CounterTestFinished<HyperCube<double>> c(100);
-		auto fFunc = c.CreateNew(c);
-		ITerminationCondition<HyperCube < double > > terminationCondition(fFunc);
 
+		auto terminationCondition = CreateCounterTermination(100);
 		HyperCube<double> goal;
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
 
@@ -328,9 +335,8 @@ SCENARIO("Termination conditions", "[optimizer]") {
 
 	GIVEN("A marginal improvement termination condition")
 	{
-		MarginalImprovementTerminationCondition<HyperCube<double>> c(1.0 / 600, 1e-5, 100);
-		auto fFunc = c.CreateNew(c);
-		ITerminationCondition<HyperCube < double > > terminationCondition(fFunc);
+		MarginalImprovementTerminationCheck<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(1.0 / 600, 1e-5, 100);
+		ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition(c);
 
 		HyperCube<double> goal;
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);

@@ -129,6 +129,7 @@
     <ClInclude Include="common.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\include\sce.cpp" />
     <ClCompile Include="common.cpp" />
     <ClCompile Include="hypercube.cpp" />
     <ClCompile Include="main.cpp" />

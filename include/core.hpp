@@ -110,6 +110,14 @@ namespace mhcpp
 		virtual ICandidateFactory<TSysConfig>* CreateNew() = 0;
 	};
 
+	template<typename TSysConfig>
+	class ICandidateFactorySeed
+	{
+	public:
+		virtual ICandidateFactory<TSysConfig>* Create() const = 0;
+		virtual ICandidateFactorySeed<TSysConfig>* Clone() const = 0;
+	};
+
 	/// <summary>
 	/// A generic interface for one or more objective scores derived from the evaluation of a candidate system configuration.
 	/// </summary>
@@ -432,32 +440,163 @@ namespace mhcpp
 		TSysConfig t;
 	};
 
+	template<typename TSysConfig, typename TCandidateFactory = UniformRandomSamplingFactory<TSysConfig>>
+	class CandidateFactorySeed : public ICandidateFactorySeed<TSysConfig>
+	{
+	private:
+		unsigned int seed;
+		TSysConfig templateConfig;
+	public:
+		CandidateFactorySeed(const CandidateFactorySeed& src)
+		{
+			this->seed = src.seed;
+			this->templateConfig = src.templateConfig;
+		}
+
+		CandidateFactorySeed(unsigned int seed, const TSysConfig& templateConfig)
+		{
+			this->seed = seed;
+			this->templateConfig = templateConfig;
+		}
+
+		ICandidateFactory<TSysConfig>* Create() const
+		{
+			auto rng = IRandomNumberGeneratorFactory<>(seed);
+			return new TCandidateFactory(rng, templateConfig);
+		}
+		
+		ICandidateFactorySeed<TSysConfig>* Clone() const
+		{
+			return new CandidateFactorySeed<TSysConfig, TCandidateFactory>(*this);
+		}
+	};
+
+
 	template<typename T>
 	class IEvolutionEngine
 	{
 		virtual IOptimizationResults<T> Evolve() = 0;
 	};
 
-	template<typename T>
+	template<typename T, typename TEngine = IEvolutionEngine<T>>
+	class TerminationCheck
+	{
+	public:
+		virtual void Reset() { }
+		virtual bool IsFinished(TEngine* engine) = 0;
+		virtual TerminationCheck* Clone() const = 0;
+		virtual ~TerminationCheck()
+		{
+		}
+	};
+
+	template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
+	class CounterTestFinished : public TerminationCheck<TSys, TEngine>
+	{
+		int counter = 0;
+		int maxChecks = 0;
+	public:
+		CounterTestFinished(int maxChecks)
+		{
+			this->maxChecks = maxChecks;
+		}
+		void Reset() { counter = 0; }
+
+		bool IsFinished(TEngine* engine)
+		{
+			counter++;
+			return (counter >= maxChecks);
+		}
+
+		TerminationCheck* Clone() const
+		{
+			// TOCHECK: is this the behavior we want (think parallel operations)
+			return new CounterTestFinished(maxChecks);
+		}
+	};
+
+	template<typename T, typename TEngine = IEvolutionEngine<T>>
 	class ITerminationCondition
 	{
+	private:
+		class AlwaysFinished : public TerminationCheck < T, TEngine >
+		{
+			bool IsFinished(TEngine* engine) { return true; }
+			TerminationCheck* Clone() const { return new AlwaysFinished(); };
+		};
 	public:
 		ITerminationCondition()
 		{
-			this->Check = [&](IEvolutionEngine<T>*) {return false; };
+			this->Check = new AlwaysFinished();
 		}
-		ITerminationCondition(std::function<bool(IEvolutionEngine<T>*)>& isFinishedFunc)
+
+		ITerminationCondition(const TerminationCheck<T,TEngine>& isFinishedFunc)
 		{
-			this->Check = isFinishedFunc;
+			this->Check = isFinishedFunc.Clone();
 		}
-		void SetEvolutionEngine(IEvolutionEngine<T>* engine) { this->engine = engine; };
+
+		ITerminationCondition(const ITerminationCondition& src)
+		{
+			engine = src.engine;
+			Check = src.Check->Clone();
+		}
+
+		ITerminationCondition(ITerminationCondition&& src)
+		{
+			engine = std::move(src.engine);
+			Check = std::move(src.Check);
+			src.engine = nullptr;
+			src.Check = nullptr;
+		}
+
+		ITerminationCondition& operator=(ITerminationCondition&& src)
+		{
+			if (&src == this){
+				return *this;
+			}
+			engine = std::move(src.engine);
+			Check = std::move(src.Check);
+			src.engine = nullptr;
+			src.Check = nullptr;
+			return *this;
+		}
+
+		ITerminationCondition& operator=(const ITerminationCondition& src)
+		{
+			if (&src == this){
+				return *this;
+			}
+			engine = src.engine;
+			Check = src.Check->Clone();
+			return *this;
+		}
+
+		~ITerminationCondition()
+		{
+			if (Check != nullptr){
+				delete Check;
+				Check = nullptr;
+			}
+		}
+
+		void SetEvolutionEngine(TEngine* engine) { this->engine = engine; };
+
+		bool RequireEngine = true;
+
 		bool IsFinished()
 		{
-			return Check(engine);
+			if (engine == nullptr && RequireEngine)
+				throw std::logic_error("The optimization engine is not yet set - cannot check for termination criterion");
+			return Check->IsFinished(engine);
+		}
+		void Reset()
+		{
+			Check->Reset();
 		}
 	private:
-		std::function<bool(IEvolutionEngine<T>*)> Check;
-		IEvolutionEngine<T>* engine = nullptr;
+		TerminationCheck<T, TEngine> * Check = nullptr;
+		//std::function<bool(TEngine*)> Check;
+		TEngine* engine = nullptr;
 	};
 
 	/// <summary>
@@ -586,6 +725,10 @@ namespace mhcpp
 		/// <returns>An object with one or more objective scores</returns>
 		virtual IObjectiveScores<TSysConf> EvaluateScore(const TSysConf& systemConfiguration) = 0;
 		virtual bool IsCloneable() { return false; }
+		virtual IObjectiveEvaluator * Clone() 
+		{ 
+			throw std::logic_error(string("Clone operation is not supported by default for ") + typeid(IObjectiveEvaluator<TSysConf>).name());
+		}
 	};
 
 	template<typename T, typename TSys>
@@ -707,6 +850,10 @@ namespace mhcpp
 	class TopologicalDistance : public IObjectiveEvaluator < TSysConf >
 	{
 	public:
+		TopologicalDistance(const TopologicalDistance& src) 
+		{ 
+			this->goal = src.goal; 
+		}
 		TopologicalDistance(const TSysConf& goal) { this->goal = goal; }
 		~TopologicalDistance() {}
 
@@ -725,6 +872,16 @@ namespace mhcpp
 				sumsqr += d*d;
 			}
 			return IObjectiveScores<TSysConf>(systemConfiguration, "L2 distance", std::sqrt(sumsqr));
+		}
+
+		bool IsCloneable() 
+		{ 
+			return true;
+		}
+
+		IObjectiveEvaluator<TSysConf> * Clone()
+		{
+			return new TopologicalDistance(*this);
 		}
 
 	private:

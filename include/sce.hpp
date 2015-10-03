@@ -43,6 +43,9 @@ namespace mhcpp
 		class Complex;
 
 		template<typename T>
+		class ShuffledComplexEvolution;
+
+		template<typename T>
 		class SubComplex
 		{
 		public:
@@ -543,7 +546,7 @@ namespace mhcpp
 
 			bool IsCancelled = false;
 
-			ITerminationCondition<T> * TerminationCondition = nullptr;
+			ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition;
 
 		protected:
 
@@ -577,11 +580,12 @@ namespace mhcpp
 
 			Complex(const std::vector<IObjectiveScores<T>>& scores, 
 				IObjectiveEvaluator<T>* evaluator, IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T>* candidateFactory,
-				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T> * terminationCondition,
+				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition,
 				ILoggerMh* logger = nullptr, std::map<string, string> tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) 
 				:
-				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF))
+				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF)),
+				terminationCondition(terminationCondition)
 			{
 				Init(scores, evaluator, q, alpha, beta, factorTrapezoidalPDF, options, reflectionRatio, contractionRatio);
 				this->fitnessAssignment = fitnessAssignment;
@@ -589,7 +593,6 @@ namespace mhcpp
 				this->logger = logger;
 				this->tags = tags;
 				this->rng = rng;
-				this->TerminationCondition = terminationCondition;
 			}
 
 			virtual ~Complex()
@@ -598,8 +601,7 @@ namespace mhcpp
 
 			bool IsFinished()
 			{
-				if(TerminationCondition == nullptr) return false;
-				return TerminationCondition->IsFinished();
+				return terminationCondition.IsFinished();
 			}
 
 			bool IsCancelledOrFinished()
@@ -642,15 +644,19 @@ namespace mhcpp
 			//where T : ICloneableSystemConfiguration
 		{
 		public:
-			ShuffledComplexEvolution(IObjectiveEvaluator<T>* evaluator,
-				ICandidateFactory<T>* populationInitializer,
-				ITerminationCondition<T>* terminationCondition,
+
+			typedef typename ITerminationCondition<T, ShuffledComplexEvolution<T>> TerminationCondition;
+
+			ShuffledComplexEvolution(const IObjectiveEvaluator<T>& evaluator,
+				const ICandidateFactorySeed<T>& candidateFactory,
+				const TerminationCondition& terminationCondition,
 				const SceParameters& sceParameters,
 				IRandomNumberGeneratorFactory<> rng = IRandomNumberGeneratorFactory<>(),
 				IFitnessAssignment<double, T> fitnessAssignment = IFitnessAssignment<double, T>(),
 				const std::map<string, string>& logTags = std::map<string, string>())
 			{
-				Init(evaluator, populationInitializer, terminationCondition,
+				IObjectiveEvaluator<T>* pEval = evaluator.Clone();
+				Init(pEval, candidateFactory, terminationCondition,
 					rng,
 					fitnessAssignment,
 					sceParameters.P,
@@ -667,60 +673,100 @@ namespace mhcpp
 					sceParameters.ContractionRatio);
 			}
 
-			void Init(IObjectiveEvaluator<T>* evaluator,
-				ICandidateFactory<T>* populationInitializer,
-				ITerminationCondition<T>* terminationCondition,
-				IRandomNumberGeneratorFactory<> rng,
-				IFitnessAssignment<double, T> fitnessAssignment,
-				int p = 5,
-				int pmin = 5,
-				int m = 13,
-				int q = 7,
-				int alpha = 3,
-				int beta = 13,
-				int numShuffle = 15,
-				double trapezoidalPdfParam = 1.8,
-				const std::map<string, string>& logTags = std::map<string, string>(),
-				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5)
+			ShuffledComplexEvolution(IObjectiveEvaluator<T>* evaluator,
+				const ICandidateFactorySeed<T>& candidateFactory,
+				const TerminationCondition& terminationCondition,
+				const SceParameters& sceParameters,
+				IRandomNumberGeneratorFactory<> rng = IRandomNumberGeneratorFactory<>(),
+				IFitnessAssignment<double, T> fitnessAssignment = IFitnessAssignment<double, T>(),
+				const std::map<string, string>& logTags = std::map<string, string>())
 			{
-				if (m < 2)
-					throw std::logic_error("M is too small");
+				Init(evaluator, candidateFactory, terminationCondition,
+					rng,
+					fitnessAssignment,
+					sceParameters.P,
+					sceParameters.Pmin,
+					sceParameters.M,
+					sceParameters.Q,
+					sceParameters.Alpha,
+					sceParameters.Beta,
+					sceParameters.NumShuffle,
+					sceParameters.TrapezoidalDensityParameter,
+					logTags,
+					SceOptions::None,
+					sceParameters.ReflectionRatio,
+					sceParameters.ContractionRatio);
+			}
 
-				if (q > m)
-					throw std::logic_error("Q must be less than or equal to M");
+			ShuffledComplexEvolution(const ShuffledComplexEvolution& src)
+			{
+				throw std::logic_error("copy constructor for ShuffledComplexEvolution not yet supported");
+				// CopyBasicsFrom(src);
+				// this->evaluator = src.evaluator;
+				// this->candidatefactory etc.
+				// this->populationInitializer = src.populationInitializer;
+				// TODO 
+				// ILoggerMh* Logger;
+			}
 
-				this->evaluator = evaluator;
-				this->populationInitializer = populationInitializer;
-				this->terminationCondition = terminationCondition;
-				//if (this->terminationCondition == nullptr)
-				//	this->terminationCondition = new MaxShuffleTerminationCondition();
-				this->terminationCondition->SetEvolutionEngine(this);
-				this->p = p;
-				this->pmin = pmin;
-				this->m = m;
-				this->q = q;
-				this->alpha = alpha;
-				this->beta = beta;
-				this->numShuffle = numShuffle;
-				this->rng = rng;
-				//if (this->rng == nullptr)
-				//	this->rng = new BasicRngFactory(0);
-				this->fitnessAssignment = fitnessAssignment;
-				//if (this->fitnessAssignment == nullptr)
-				//	this->fitnessAssignment = new DefaultFitnessAssignment();
-				this->logTags = logTags;
-				this->trapezoidalPdfParam = trapezoidalPdfParam;
-				this->options = options;
-				this->ReflectionRatio = reflectionRatio;
-				this->ContractionRatio = contractionRatio;
+			ShuffledComplexEvolution(ShuffledComplexEvolution&& src)
+			{
+				MoveFrom(src);
+			}
+
+			ShuffledComplexEvolution& operator=(ShuffledComplexEvolution&& src)
+			{
+				if (&src == this){
+					return *this;
+				}
+				MoveFrom(src);
+				return *this;
+			}
+
+			ShuffledComplexEvolution& operator=(const ShuffledComplexEvolution& src)
+			{
+				if (&src == this){
+					return *this;
+				}
+				throw std::logic_error("copy assignment for ShuffledComplexEvolution not yet supported");
+				// CopyBasicsFrom(src);
+				// this->evaluator = src.evaluator;
+				// this->populationInitializer = src.populationInitializer;
+				// TODO 
+				// ILoggerMh* Logger;
+				return *this;
+			}
+
+			virtual ~ShuffledComplexEvolution()
+			{
+				if (evaluator != nullptr)
+				{
+					delete evaluator;
+					evaluator = nullptr;
+				}
+				if (populationInitializer != nullptr)
+				{
+					delete populationInitializer;
+					populationInitializer = nullptr;
+				}
+				if (candidateFactory != nullptr)
+				{
+					delete candidateFactory;
+					candidateFactory = nullptr;
+				}
 			}
 
 			IOptimizationResults<T> Evolve()
 			{
 				isCancelled = false;
+				terminationCondition.Reset();
+				// TODO: also reset log
+
+				this->populationInitializer = candidateFactory->Create();
+
 				std::vector<IObjectiveScores<T>> scores = evaluateScores(evaluator, initialisePopulation());
 				//loggerWrite(scores, createSimpleMsg("Initial Population", "Initial Population"));
-				auto isFinished = terminationCondition->IsFinished();
+				auto isFinished = terminationCondition.IsFinished();
 				if (isFinished)
 				{
 					logTerminationConditionMet();
@@ -731,7 +777,7 @@ namespace mhcpp
 				//OnAdvanced( new ComplexEvolutionEvent( complexes ) );
 
 				CurrentShuffle = 1;
-				isFinished = terminationCondition->IsFinished();
+				isFinished = terminationCondition.IsFinished();
 				if (isFinished) logTerminationConditionMet();
 				while (!isFinished && !isCancelled)
 				{
@@ -760,7 +806,7 @@ namespace mhcpp
 					for (auto c : bufferCplx) delete c;
 
 					CurrentShuffle++;
-					isFinished = terminationCondition->IsFinished();
+					isFinished = terminationCondition.IsFinished();
 					if (isFinished) logTerminationConditionMet();
 				}
 				return packageResults(complexes);
@@ -773,10 +819,114 @@ namespace mhcpp
 			}
 
 		private:
+
+			void Init(IObjectiveEvaluator<T>* evaluator,
+				const ICandidateFactorySeed<T>& candidateFactory,
+				const TerminationCondition& terminationCondition,
+				IRandomNumberGeneratorFactory<> rng,
+				IFitnessAssignment<double, T> fitnessAssignment,
+				int p = 5,
+				int pmin = 5,
+				int m = 13,
+				int q = 7,
+				int alpha = 3,
+				int beta = 13,
+				int numShuffle = 15,
+				double trapezoidalPdfParam = 1.8,
+				const std::map<string, string>& logTags = std::map<string, string>(),
+				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5)
+			{
+				if (m < 2)
+					throw std::logic_error("M is too small");
+
+				if (q > m)
+					throw std::logic_error("Q must be less than or equal to M");
+
+
+				this->evaluator = evaluator;
+				this->candidateFactory = candidateFactory.Clone();
+				this->populationInitializer = nullptr;
+				this->terminationCondition = terminationCondition;
+				//if (this->terminationCondition == nullptr)
+				//	this->terminationCondition = new MaxShuffleTerminationCondition();
+				this->terminationCondition.SetEvolutionEngine(this);
+				this->p = p;
+				this->pmin = pmin;
+				this->m = m;
+				this->q = q;
+				this->alpha = alpha;
+				this->beta = beta;
+				this->numShuffle = numShuffle;
+				this->rng = rng;
+				//if (this->rng == nullptr)
+				//	this->rng = new BasicRngFactory(0);
+				this->fitnessAssignment = fitnessAssignment;
+				//if (this->fitnessAssignment == nullptr)
+				//	this->fitnessAssignment = new DefaultFitnessAssignment();
+				this->logTags = logTags;
+				this->trapezoidalPdfParam = trapezoidalPdfParam;
+				this->options = options;
+				this->ReflectionRatio = reflectionRatio;
+				this->ContractionRatio = contractionRatio;
+			}
+
+			void MoveFrom(ShuffledComplexEvolution& src)
+			{
+				this->terminationCondition = std::move(src.terminationCondition);
+				this->terminationCondition.SetEvolutionEngine(this);
+				this->p = std::move(src.p);
+				this->pmin = std::move(src.pmin);
+				this->m = std::move(src.m);
+				this->q = std::move(src.q);
+				this->alpha = std::move(src.alpha);
+				this->beta = std::move(src.beta);
+				this->numShuffle = std::move(src.numShuffle);
+				this->options = std::move(src.options);
+				this->ReflectionRatio = std::move(src.ReflectionRatio);
+				this->ContractionRatio = std::move(src.ContractionRatio);
+				this->logTags = std::move(src.logTags);
+				this->trapezoidalPdfParam = std::move(src.trapezoidalPdfParam);
+				this->fitnessAssignment = std::move(src.fitnessAssignment);
+				this->rng = std::move(src.rng);
+
+				this->evaluator = std::move(src.evaluator);
+				this->populationInitializer = std::move(src.populationInitializer);
+				this->candidateFactory = std::move(src.candidateFactory);
+
+				src.evaluator = nullptr;
+				src.populationInitializer = nullptr;
+				src.candidateFactory = nullptr;
+				// TODO 
+				// ILoggerMh* Logger;
+			}
+
+			void CopyBasicsFrom(const ShuffledComplexEvolution& src)
+			{
+				this->terminationCondition = src.terminationCondition;
+				//if (this->terminationCondition == src.nullptr)
+				//	this->terminationCondition = src.new MaxShuffleTerminationCondition();
+				this->terminationCondition.SetEvolutionEngine(this);
+				this->p = src.p;
+				this->pmin = src.pmin;
+				this->m = src.m;
+				this->q = src.q;
+				this->alpha = src.alpha;
+				this->beta = src.beta;
+				this->numShuffle = src.numShuffle;
+				this->options = src.options;
+				this->ReflectionRatio = src.reflectionRatio;
+				this->ContractionRatio = src.contractionRatio;
+				this->logTags = src.logTags;
+				this->trapezoidalPdfParam = src.trapezoidalPdfParam;
+				this->fitnessAssignment = src.fitnessAssignment;
+				this->rng = src.rng;
+			}
+
 			std::map<string, string> logTags;
-			IObjectiveEvaluator<T>* evaluator;
-			ICandidateFactory<T>* populationInitializer;
-			ITerminationCondition<T>* terminationCondition;
+			ICandidateFactorySeed<T>* candidateFactory = nullptr;
+			IObjectiveEvaluator<T>* evaluator = nullptr;
+			ICandidateFactory<T>* populationInitializer = nullptr;
+			TerminationCondition terminationCondition;
 			IRandomNumberGeneratorFactory<> rng;
 			IFitnessAssignment<double, T> fitnessAssignment;
 			double trapezoidalPdfParam;
@@ -826,9 +976,9 @@ namespace mhcpp
 			#endregion
 			}
 
-			class MarginalImprovementTerminationCondition : MaxWalltimeCheck, ITerminationCondition<T>
+			class MarginalImprovementTerminationCheck : MaxWalltimeCheck, ITerminationCondition<T>
 			{
-			MarginalImprovementTerminationCondition(double maxHours, double tolerance, int cutoffNoImprovement)
+			MarginalImprovementTerminationCheck(double maxHours, double tolerance, int cutoffNoImprovement)
 			: base(maxHours)
 			{
 			this->tolerance = tolerance;
@@ -1223,10 +1373,11 @@ namespace mhcpp
 			std::vector<FitnessAssignedScores<double, T>> PopulationAtShuffling;
 		};
 
-		class MaxWalltimeCheck
+		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
+		class MaxWalltimeCheck : public TerminationCheck<TSys, TEngine>
 		{
 		public:
-			bool HasReachedMaxTime()
+			bool HasReachedMaxTime() const
 			{
 				if (maxHours <= 0)
 					return false;
@@ -1235,33 +1386,75 @@ namespace mhcpp
 				return (hoursElapsed >= maxHours);
 			}
 
-		protected:
-			MaxWalltimeCheck(double maxHours)
+			virtual void Reset()
 			{
-				(*this).maxHours = maxHours;
 				startTime = boost::posix_time::second_clock::local_time();
 			}
 
-		private:
+			virtual bool IsFinished(TEngine* engine)
+			{
+				return HasReachedMaxTime();
+			}
+
+			virtual TerminationCheck* Clone() const
+			{
+				// TOCHECK: is this the behavior we want (think parallel operations)
+				auto result = new MaxWalltimeCheck(maxHours);
+				result->startTime = this->startTime;
+				return result;
+			}
+
+			virtual ~MaxWalltimeCheck()
+			{
+			}
+
+		protected:
+			MaxWalltimeCheck(double maxHours)
+			{
+				this->maxHours = maxHours;
+				Reset();
+			}
 			double maxHours;
 			boost::posix_time::ptime startTime;
 		};
 
-		template<typename TSys>
-		class MarginalImprovementTerminationCondition :
-			public ITerminationCondition<TSys>,
-			public MaxWalltimeCheck
+		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
+		class MarginalImprovementTerminationCheck :
+			public MaxWalltimeCheck<TSys, TEngine>
 		{
 		public:
-			MarginalImprovementTerminationCondition(double maxHours, double tolerance, int cutoffNoImprovement) : MaxWalltimeCheck(maxHours)
+			MarginalImprovementTerminationCheck(double maxHours, double tolerance, int cutoffNoImprovement) :
+				MaxWalltimeCheck(maxHours)
 			{
-				this->maxHours = maxHours;
 				this->tolerance = tolerance;
 				this->maxConverge = cutoffNoImprovement;
 			}
-			bool IsFinished(IEvolutionEngine<TSys>* engine)
+
+			virtual void Reset()
 			{
+				MaxWalltimeCheck::Reset();
+				converge = 0;
+			}
+
+			virtual bool IsFinished(TEngine* engine)
+			{
+				return isFinished(engine);
+			}
+
+			virtual TerminationCheck* Clone() const
+			{
+				// TOCHECK: is this the behavior we want (think parallel operations)
+				auto result = new MarginalImprovementTerminationCheck(maxHours, tolerance, maxConverge);
+				result->Reset();
+				return result;
+			}
+
+		protected:
+			bool isFinished(TEngine* engine)
+			{
+				if (engine == nullptr) throw std::invalid_argument(string("Argument must not be nullptr"));
 				IPopulation<double, TSys>* sce = dynamic_cast<IPopulation<double, TSys>*>(engine);
+				if (sce == nullptr) throw std::invalid_argument(string("Argument 'engine' is not a ") + typeid(IPopulation<double, TSys>).name());
 
 				if (HasReachedMaxTime())
 					return true;
@@ -1287,15 +1480,14 @@ namespace mhcpp
 					return true;
 				return false;
 			}
-			std::function<bool(IEvolutionEngine<TSys>*)> CreateNew(MarginalImprovementTerminationCondition& mitc)
-			{
-				return [&mitc](IEvolutionEngine<TSys>* e)
-				{
-					return mitc.IsFinished(e);
-				};
-			}
+			//std::function<bool(TEngine*)> CreateNew(MarginalImprovementTerminationCheck& mitc)
+			//{
+			//	return [&mitc](TEngine* e)
+			//	{
+			//		return mitc.IsFinished(e);
+			//	};
+			//}
 		private:
-			double maxHours;
 			double tolerance;
 			int maxConverge;
 
