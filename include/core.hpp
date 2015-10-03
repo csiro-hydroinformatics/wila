@@ -716,6 +716,13 @@ namespace mhcpp
 			}
 			return result;
 		}
+
+		std::vector<IObjectiveScores<TSys>> GetScores(const std::vector<FitnessAssignedScores<TVal, TSys>>& fitnessAssigned)
+		{
+			std::vector<IObjectiveScores<TSys>> result(fitnessAssigned.size());
+			std::transform(fitnessAssigned.begin(), fitnessAssigned.end(), result.begin(), FitnessAssignedScores<TVal, TSys>::Scores);
+			return result;
+		}
 	};
 
 	template<typename TSysConf>
