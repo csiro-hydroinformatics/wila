@@ -29,7 +29,7 @@ ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double
 	hc.Define("a", 1, 2, 1.5);
 	hc.Define("b", 3, 4, 3.3);
 
-	SceParameters sceParams = SceParameters::CreateForProblemOfDimension(5, 20);
+	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
 	// TODO: check above
 	sceParams.P = 5;
 	sceParams.Pmin = 3;
