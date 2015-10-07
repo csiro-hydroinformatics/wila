@@ -13,12 +13,317 @@ namespace mhcpp
 		/// <summary>
 		/// A facade for logging information from optimisation processes, to avoid coupling to specific frameworks.
 		/// </summary>
+		template<class TSys>
 		class ILoggerMh
 		{
-			//virtual void Write(std::vector<IBaseObjectiveScores> scores, std::map<string, string> tags) = 0;
-			//virtual void Write(FitnessAssignedScores<double> worstPoint, std::map<string, string> tags) = 0;
-			virtual void Write(IHyperCube<double>* newPoint, std::map<string, string> tags) = 0;
-			virtual void Write(string message, std::map<string, string> tags) = 0;
+		public:
+			//virtual void Write(std::vector<IBaseObjectiveScores> scores, const std::map<string, string>& ctags) = 0;
+			//virtual void Write(FitnessAssignedScores<double> worstPoint, const std::map<string, string>& ctags) = 0;
+			virtual void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags) = 0;
+			virtual void Write(const string& message, const std::map<string, string>& ctags) = 0;
+			virtual void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags);
+			virtual void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& ctags);
+			virtual void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags);
+			virtual void Reset() = 0;
+		};
+
+		class LoggerMhHelper
+		{
+		public:
+			template<class T, class TSys>
+			static void Write(const FitnessAssignedScores<T,TSys>& scores, const std::map<string, string>& tags, ILoggerMh<TSys>* logger)
+			{
+				if (logger != nullptr)
+					logger->Write(scores, tags);
+			}
+
+			template<class T, class TSys>
+			static void Write(const std::vector<FitnessAssignedScores<T, TSys>>& scores, const std::map<string, string>& ctags, ILoggerMh<TSys>* logger)
+			{
+				if (logger != nullptr)
+					logger->Write(scores, ctags);
+			}
+
+
+			template<class TSys>
+			static void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags, ILoggerMh<TSys>* logger)
+			{
+				if (logger != nullptr)
+					logger->Write(scores, tags);
+			}
+
+			template<class TSys>
+			static void Write(string infoMsg, const std::map<string, string>& tags, ILoggerMh<TSys>* logger)
+			{
+				if (logger != nullptr)
+					logger->Write(infoMsg, tags);
+			}
+
+			static std::map<string, string> MergeDictionaries(const std::map<string, string>& first, const std::map<string, string>& second)
+			{
+				std::map<string, string> result(first);
+				for (auto& x : second)
+				{
+					result[x.first] = x.second;
+				}
+				return result;
+			}
+
+			static std::map<string, string> CreateTag(const std::initializer_list<std::tuple<string, string>>& tuples)
+			{
+				std::map<string, string> result;
+				for (auto& x : tuples)
+				{
+					result[get<0>(x)] = get<1>(x);
+				}
+				return result;
+			}
+
+			static std::tuple<string, string> MkTuple(const string& key, const string& value)
+			{
+				return std::make_tuple(key, value);
+			}
+
+			//	static IObjectiveScores[] CreateNoScore<TSysConfig>(TSysConfig newPoint) where TSysConfig : ISystemConfiguration
+			//	{
+			//		return new IObjectiveScores[] { new ZeroScores<TSysConfig>() { SystemConfiguration = newPoint } };
+			//	}
+
+			//		/// <summary>
+			//		/// Serialise the logger to csv.
+			//		/// </summary>
+			//		/// <param name="logger">The logger.</param>
+			//		/// <param name="outputCsvLogFile">The output CSV log file.</param>
+			//		/// <param name="resultsName">Name of the results.</param>
+			//		/// <param name="delimiter">The delimiter.</param>
+			//		static void CsvSerialise(this InMemoryLogger logger, string outputCsvLogFile, string resultsName, string delimiter = ",")
+			//	{
+			//		var logInfo = ExtractLog(logger, resultsName);
+			//		WriteToCsv(outputCsvLogFile, logInfo.Item2, logInfo.Item1);
+			//	}
+
+			//	/// <summary>
+			//	/// Extract information from a logging object to a format using only classes from the Base Class Library
+			//	/// </summary>
+			//	/// <param name="logger"></param>
+			//	/// <param name="resultsName"></param>
+			//	/// <returns>A tuple - the first item is a list of strings, the unique names (column headers) and the second item is a list of dictionaries (the information for each line)</returns>
+			//	static Tuple<List<string>, List<Dictionary<string, string>>> ExtractLog(this IEnumerable<ILogInfo> logger, string resultsName = "")
+			//	{
+			//		List<IResultsSetInfo> allResultsSets = new List<IResultsSetInfo>();
+			//		var list = logger.ToList();
+			//		foreach(var item in list)
+			//		{
+			//			IResultsSetInfo resultsSet = createResultsSet(item, resultsName);
+			//			if (resultsSet != null)
+			//				allResultsSets.Add(resultsSet);
+			//		}
+
+			//		HashSet<string> uniqueKeys = new HashSet<string>();
+			//		List<Dictionary<string, string>> lines = new List<Dictionary<string, string>>();
+			//		foreach(IResultsSetInfo s in allResultsSets)
+			//		{
+			//			foreach(IKeyValueInfoProvider lineInfo in s)
+			//			{
+			//				Dictionary<string, string> line = lineInfo.AsDictionary();
+			//				foreach(string key in line.Keys)
+			//					uniqueKeys.Add(key);
+
+			//				lines.Add(line);
+			//			}
+			//		}
+
+			//		List<string> keys = uniqueKeys.ToList();
+			//		keys.Sort();
+			//		var logInfo = Tuple.Create(keys, lines);
+			//		return logInfo;
+			//	}
+
+			//	static void ToColumns(this IEnumerable<ILogInfo> logger, out Dictionary<string, string[]> strInfo, out Dictionary<string, double[]> numericInfo)
+			//	{
+			//		var dataLog = ExtractLog(logger);
+			//		var keys = dataLog.Item1.ToArray();
+			//		var lines = dataLog.Item2.ToArray();
+
+			//		var list = logger.ToList();
+			//		var firstScoreEntry = list.First(x = > x.Scores.Length > 0);
+			//		var firstScore = firstScoreEntry.Scores[0];
+			//		var hc = firstScore.GetSystemConfiguration() as IHyperCube<double>;
+			//		if (hc == null)
+			//			throw new NotSupportedException("The first item in the log must be including information on an IHyperCube<double>");
+			//		var numericColumnsList = new List<string>(hc.GetVariableNames());
+			//		for (int i = 0; i < firstScore.ObjectiveCount; i++)
+			//			numericColumnsList.Add(firstScore.GetObjective(i).Name);
+			//		var numericColumns = numericColumnsList.ToArray();
+			//		var stringColumns = keys.Where(x = > !numericColumns.Contains(x)).ToArray();
+
+
+			//		strInfo = new Dictionary<string, string[]>();
+			//		for (int i = 0; i < stringColumns.Length; i++)
+			//			strInfo.Add(stringColumns[i], new string[lines.Length]);
+			//		numericInfo = new Dictionary<string, double[]>();
+			//		for (int i = 0; i < numericColumns.Length; i++)
+			//			numericInfo.Add(numericColumns[i], new double[lines.Length]);
+
+			//		for (int i = 0; i < lines.Length; i++)
+			//		{
+			//			foreach(var p in numericInfo.Keys)
+			//				numericInfo[p][i] = double.NaN;
+			//			foreach(var k in lines[i].Keys)
+			//			{
+			//				var value = lines[i][k];
+			//				if (strInfo.ContainsKey(k))
+			//					strInfo[k][i] = value;
+			//				if (numericInfo.ContainsKey(k))
+			//				{
+			//					double d = 0;
+			//					numericInfo[k][i] = Double.TryParse(value, out d) ? d : double.NaN;
+			//				}
+			//			}
+			//		}
+			//	}
+
+			//	/// <summary>
+			//	/// Writes to CSV.
+			//	/// With a bit more work, this could become an extension method to dictionary
+			//	/// </summary>
+			//	/// <typeparam name="T"></typeparam>
+			//	/// <param name="filename">The filename.</param>
+			//	/// <param name="lines">The lines.</param>
+			//	/// <param name="header">The header.</param>
+			//	/// <param name="delimiter">The delimiter.</param>
+			//	private static void WriteToCsv<T>(string filename, IEnumerable<Dictionary<string, T>> lines, IList<string> header, string delimiter = ",")
+			//	{
+			//		using (TextWriter writer = new StreamWriter(filename))
+			//		{
+			//			// write header
+			//			for (int i = 0; i < header.Count; i++)
+			//			{
+			//				writer.Write("\"{0}\"{1}", header[i], (i < header.Count - 1) ? delimiter : "");
+			//			}
+			//			writer.WriteLine();
+
+			//			// write each line, in the order specified by the header values
+			//			foreach(var line in lines)
+			//			{
+			//				for (int i = 0; i < header.Count; i++)
+			//				{
+			//					if (line.ContainsKey(header[i]))
+			//						writer.Write("\"{0}\"{1}", line[header[i]], (i < header.Count - 1) ? delimiter : "");
+			//					else
+			//						writer.Write((i < header.Count - 1) ? delimiter : "");
+			//				}
+			//				writer.WriteLine();
+			//			}
+
+			//			writer.Close();
+			//		}
+			//	}
+
+			//	private class LineEntryCollection : IResultsSetInfo
+			//	{
+			//		protected List<IKeyValueInfoProvider> entries = new List<IKeyValueInfoProvider>();
+
+			//		IEnumerator<IKeyValueInfoProvider> IEnumerable<IKeyValueInfoProvider>.GetEnumerator()
+			//		{
+			//			return entries.GetEnumerator();
+			//		}
+
+			//		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+			//		{
+			//			return entries.GetEnumerator();
+			//		}
+			//	}
+
+			//	private class ObjResultsInfo : LineEntryCollection
+			//	{
+			//		private ObjectivesResultsCollection result;
+
+			//		public ObjResultsInfo(ObjectivesResultsCollection result)
+			//		{
+			//			this.result = result;
+
+			//			foreach(var scores in result.ScoresSet)
+			//			{
+			//				entries.Add(new ScoreCollectionInfo(scores, result.Tags));
+			//			}
+			//		}
+			//	}
+
+			//	private class DictLineInfo : IKeyValueInfoProvider
+			//	{
+			//		protected Dictionary<string, string> line;
+			//		public DictLineInfo() { }
+			//		public DictLineInfo(std::map<string, string> line) { this.line = new Dictionary<string, string>(line); }
+			//		public Dictionary<string, string> AsDictionary()
+			//		{
+			//			return line;
+			//		}
+			//	}
+
+			//	private class ScoreCollectionInfo : DictLineInfo
+			//	{
+			//		public ScoreCollectionInfo(ObjectiveScoreCollection scores, TagCollection tagCollection)
+			//		{
+			//			line = new Dictionary<string, string>();
+			//			HyperCube hyperCubeScores = (scores.SysConfiguration) as HyperCube;
+			//			if (hyperCubeScores != null)
+			//				foreach(var variable in hyperCubeScores.Variables)
+			//				line.Add(variable.Name, variable.Value.ToString());
+
+			//			foreach(var score in scores.Scores)
+			//				line.Add(score.Name, score.Value);
+
+			//			foreach(var tag in tagCollection.Tags)
+			//				line.Add(tag.Name, tag.Value);
+			//		}
+			//	}
+
+
+			//	private class SingleLineInfo : LineEntryCollection
+			//	{
+			//		public SingleLineInfo(std::map<string, string> dictionary)
+			//		{
+			//			this.entries.Add(new DictLineInfo(dictionary));
+			//		}
+			//	}
+
+			//	private static IResultsSetInfo createResultsSet(ILogInfo item, string resultsName = "")
+			//	{
+			//		IObjectiveScores[] arrayScores = item.Scores as IObjectiveScores[];
+			//		if (arrayScores != null && arrayScores.Length > 0)
+			//		{
+			//			std::map<string, string> tags = item.Tags;
+			//			var result = ConvertOptimizationResults.Convert(arrayScores, attributes: tags);
+			//			result.Name = resultsName;
+			//			return new ObjResultsInfo(result);
+			//		}
+			//		else
+			//			return new SingleLineInfo(item.Tags);
+			//	}
+
+
+			//	private class ZeroScores<TSysConfig> : IObjectiveScores<TSysConfig>
+			//		where TSysConfig : ISystemConfiguration
+			//{
+			//	public TSysConfig SystemConfiguration{ get; set; }
+
+			//	public IObjectiveScore GetObjective(int i)
+			//	{
+			//		throw new IndexOutOfRangeException();
+			//	}
+
+			//	public ISystemConfiguration GetSystemConfiguration()
+			//	{
+			//		return this.SystemConfiguration;
+			//	}
+
+			//	public int ObjectiveCount
+			//	{
+			//		get{ return 0; }
+			//	}
+			//}
+
 		};
 	}
 }
@@ -52,16 +357,16 @@ namespace mhcpp
 
 			SubComplex(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, int q, int alpha,
 				IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T> * candidateFactory, RngInt<>& discreteRng, 
-				IFitnessAssignment<double, T> fitnessAssignment, SceOptions options = SceOptions::RndInSubComplex, double contractionRatio = 0.5, double reflectionRatio = -1.0)
+				IFitnessAssignment<double, T> fitnessAssignment, ILoggerMh<T>* logger = nullptr, const std::map<string, string>& tags = std::map<string, string>(), SceOptions options = SceOptions::RndInSubComplex, double contractionRatio = 0.5, double reflectionRatio = -1.0)
 			{
-				Init(complexPopulation, evaluator, q, alpha, rng, candidateFactory, fitnessAssignment, options, contractionRatio, reflectionRatio, discreteRng);
+				Init(complexPopulation, evaluator, q, alpha, rng, candidateFactory, fitnessAssignment, logger, tags, options, contractionRatio, reflectionRatio, discreteRng);
 			}
 
 			SubComplex(Complex<T>& complex)
 			{
 				this->complex = &complex;
 				Init(complex.scores, complex.evaluator, complex.q, complex.alpha, 
-					complex.rng, complex.candidateFactory, complex.fitnessAssignment, 
+					complex.rng, complex.candidateFactory, complex.fitnessAssignment, complex.logger, complex.tags, 
 					complex.options, complex.ContractionRatio, complex.ReflectionRatio, complex.discreteGenerator);
 			}
 
@@ -72,6 +377,11 @@ namespace mhcpp
 				return false;
 			}
 
+			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
+			{
+				return LoggerMhHelper::MergeDictionaries(LoggerMhHelper::CreateTag({ tuples }), this->tags);
+			}
+
 			void Evolve()
 			{
 				int a = 0;
@@ -79,13 +389,13 @@ namespace mhcpp
 				{
 					std::vector<FitnessAssignedScores<double, T>> withoutWorstPoint;
 					FitnessAssignedScores<double, T> worstPoint = FindWorstPoint(evolved, withoutWorstPoint);
-					//loggerWrite(worstPoint, createTagConcat(
-					//	LoggerMhHelper.MkTuple("Message", "Worst point in subcomplex"),
-					//	createTagCatComplexNo()));
-					//loggerWrite(withoutWorstPoint, createTagConcat(
-					//	LoggerMhHelper.MkTuple("Message", "Subcomplex without worst point"),
-					//	createTagCatComplexNo()
-					//	));
+					loggerWrite(worstPoint, createTagConcat({
+						LoggerMhHelper::MkTuple("Message", "Worst point in subcomplex"),
+						createTagCatComplexNo() }));
+					loggerWrite(withoutWorstPoint, createTagConcat({
+						LoggerMhHelper::MkTuple("Message", "Subcomplex without worst point"),
+						createTagCatComplexNo() }
+						));
 					T centroid = getCentroid(withoutWorstPoint);
 
 					bool success;
@@ -103,15 +413,15 @@ namespace mhcpp
 							//deleteElements(evolved);
 							//evolved = candidateSubcomplex;
 
-							//loggerWrite(fitReflectedPoint, createTagConcat(
-							//	LoggerMhHelper.MkTuple("Message", "Reflected point in subcomplex"),
-							//	createTagCatComplexNo()));
+							loggerWrite(fitReflectedPoint, createTagConcat({
+								LoggerMhHelper::MkTuple("Message", "Reflected point in subcomplex"),
+								createTagCatComplexNo() }));
 						}
 						else
 						{
 							clear(candidateSubcomplex);
-							//loggerWrite(fitReflectedPoint,
-							//	createTagConcat(LoggerMhHelper.MkTuple("Message", "Reflected point in subcomplex - Failed"), createTagCatComplexNo()));
+							loggerWrite(fitReflectedPoint,
+								createTagConcat({ LoggerMhHelper::MkTuple("Message", "Reflected point in subcomplex - Failed"), createTagCatComplexNo() }));
 							candidateSubcomplex = contractionOrRandom(withoutWorstPoint, worstPoint, centroid);
 							//if (candidateSubcomplex == nullptr) // this can happen if the feasible region of the parameter space is not convex.
 							//	candidateSubcomplex = fitnessAssignment.AssignFitness(bufferComplex);
@@ -173,10 +483,12 @@ namespace mhcpp
 			IRandomNumberGeneratorFactory<> rng;
 			ICandidateFactory<T> * cf = nullptr;
 			RngInt<> * discreteRng = nullptr;
+			std::map<string, string> tags;
+			ILoggerMh<T>* logger = nullptr;
 
 			void Init(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, int q, int alpha,
 				IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T> * candidateFactory,
-				IFitnessAssignment<double, T> fitnessAssignment, SceOptions options, 
+				IFitnessAssignment<double, T> fitnessAssignment, ILoggerMh<T>* logger, const std::map<string, string>& tags, SceOptions options,
 				double contractionRatio, double reflectionRatio, RngInt<>& discreteRng)
 			{
 				this->options = options;
@@ -191,6 +503,8 @@ namespace mhcpp
 				if(cf==nullptr)
 					cf = new UniformRandomSamplingFactory<T>(rng, complexPopulation[0].SystemConfiguration());
 				this->discreteRng = &discreteRng;
+				this->tags = tags;
+				this->logger = logger;
 #ifdef _DEBUG
 				//CheckParameterFeasible(complexPopulation);
 #endif
@@ -198,7 +512,6 @@ namespace mhcpp
 #ifdef _DEBUG
 				//CheckParameterFeasible(leftOutFromSubcomplex);
 #endif
-
 			}
 
 			void clear(std::vector<FitnessAssignedScores<double, T>>& vec)
@@ -238,38 +551,45 @@ namespace mhcpp
 				return T::GetCentroid(tmp);
 			}
 
-			void loggerWrite(string infoMsg, std::map<string, string> tags)
+			void loggerWrite(const string& infoMsg, const std::map<string, string>& ctags)
 			{
-				//LoggerMhHelper.Write(infoMsg, tags, logger);
+				LoggerMhHelper::Write(infoMsg, tags, this->logger);
 			}
 
-			void loggerWrite(std::vector<IObjectiveScores<T>> scores, std::map<string, string> tags)
+			void loggerWrite(const std::vector<IObjectiveScores<T>>& scores, const std::map<string, string>& ctags)
 			{
-				//tags = LoggerMhHelper.MergeDictionaries(logTags, tags);
-				//LoggerMhHelper.Write(scores, tags, logger);
+				auto tags = LoggerMhHelper::MergeDictionaries(this->tags, ctags);
+				LoggerMhHelper::Write(scores, tags, this->logger);
 			}
 
-			void loggerWrite(FitnessAssignedScores<double, T> scores, std::map<string, string> tags)
+			void loggerWrite(const FitnessAssignedScores<double, T>& scores, const std::map<string, string>& ctags)
 			{
-				//tags = LoggerMhHelper.MergeDictionaries(logTags, tags);
-				//LoggerMhHelper.Write(scores, tags, logger);
+				auto tags = LoggerMhHelper::MergeDictionaries(this->tags, ctags);
+				LoggerMhHelper::Write(scores, tags, this->logger);
+			}
+
+			void loggerWrite(const std::vector<FitnessAssignedScores<double, T>>& scores, const std::map<string, string>& ctags)
+			{
+				auto tags = LoggerMhHelper::MergeDictionaries(this->tags, ctags);
+				LoggerMhHelper::Write<double,T>(scores, tags, this->logger);
 			}
 
 			std::tuple<string, string> createTagCatComplexNo()
 			{
-				//return LoggerMhHelper.MkTuple("Category", "Complex No " + complexId);
+				//return LoggerMhHelper::MkTuple("Category", "Complex No " + complexId);
 				return std::tuple<string, string>();
 			}
 
-			//void loggerWrite(T point, std::map<string, string> tags)
-			//{
-			//    if (logger != nullptr)
-			//        logger.Write(point, tags);
-			//}
-
-			void loggerWrite(IObjectiveScores<T> point, std::map<string, string> tags)
+			void loggerWrite(const T& point, const std::map<string, string>& ctags)
 			{
-				this->loggerWrite(new std::vector < IObjectiveScores<T> >{ point }, tags);
+			    if (logger != nullptr)
+			        logger.Write(point, ctags);
+			}
+
+			void loggerWrite(const IObjectiveScores<T>& point, const std::map<string, string>& ctags)
+			{
+				std::vector < IObjectiveScores<T> > pts = { point };
+				this->loggerWrite(pts, ctags);
 			}
 
 			std::vector<IObjectiveScores<T>> aggregatePoints(const std::vector<FitnessAssignedScores<double, T>>& subComplex, const std::vector<IObjectiveScores<T>>& leftOutFromSubcomplex)
@@ -381,23 +701,23 @@ namespace mhcpp
 					if (trialPoint.CompareTo(worstPoint) <= 0)
 					{
 						result = candidateSubcomplex;
-						//loggerWrite(trialPoint, createTagConcat(
-						//	LoggerMhHelper.MkTuple("Message", "Contracted point in subcomplex"),
-						//	createTagCatComplexNo()));
+						loggerWrite(trialPoint, createTagConcat({
+							LoggerMhHelper::MkTuple("Message", "Contracted point in subcomplex"),
+							createTagCatComplexNo() }));
 						return result;
 					}
 					else
 					{
 						clear(candidateSubcomplex);
-						//loggerWrite(trialPoint, createTagConcat(
-						//	LoggerMhHelper.MkTuple("Message", "Contracted point in subcomplex-Failed"),
-						//	createTagCatComplexNo()));
+						loggerWrite(trialPoint, createTagConcat({
+							LoggerMhHelper::MkTuple("Message", "Contracted point in subcomplex-Failed"),
+							createTagCatComplexNo() }));
 					}
 				}
 				else
 				{
 					auto msg = "Contracted point unfeasible";
-					//loggerWrite(msg, createTagConcat(LoggerMhHelper.MkTuple("Message", msg), createTagCatComplexNo()));
+					loggerWrite(msg, createTagConcat({ LoggerMhHelper::MkTuple("Message", msg), createTagCatComplexNo() }));
 				}
 				// 2012-02-14: The Duan et al 1993 paper specifies to use the complex to generate random points. However, comparison to a Matlab
 				// implementation showed a slower rate of convergence. 
@@ -425,8 +745,8 @@ namespace mhcpp
 				}
 				auto newScore = evaluator->EvaluateScore(newPoint);
 				loggerWrite(newScore, createTagConcat(
-					LoggerMhHelper.MkTuple("Message", "Adding a partially random point"),
-					LoggerMhHelper.MkTuple("Category", "Complex No " + complexId)
+					LoggerMhHelper::MkTuple("Message", "Adding a partially random point"),
+					LoggerMhHelper::MkTuple("Category", "Complex No " + complexId)
 					));
 				return fitnessAssignment.AssignFitness(aggregate(newScore, withoutWorstPoint));
 			}
@@ -453,17 +773,16 @@ namespace mhcpp
 			{
 				auto tmp = convertAllToHyperCube(popForHypercubeDefn);
 				T newPoint = this->cf->CreateRandomCandidate(tmp);
-							//if (newPoint == nullptr)
-							//{
-							//	auto msg = "Random point within hypercube bounds is unfeasible";
-							//	//loggerWrite(msg, createTagConcat(LoggerMhHelper.MkTuple("Message", msg), createTagCatComplexNo()));
-							//	return null;
-							//}
+				//if (newPoint == nullptr)
+				//{
+				string msg = "Random point within hypercube bounds is unfeasible";
+				loggerWrite(msg, createTagConcat({ LoggerMhHelper::MkTuple("Message", msg), createTagCatComplexNo() }));
+				//return null;
 				auto newScore = evaluator->EvaluateScore(newPoint);
-				//loggerWrite(newScore, createTagConcat(
-				//	LoggerMhHelper.MkTuple("Message", "Adding a random point in hypercube"),
-				//	createTagCatComplexNo()
-				//	));
+				loggerWrite(newScore, createTagConcat({
+					LoggerMhHelper::MkTuple("Message", "Adding a random point in hypercube"),
+					createTagCatComplexNo() }
+					));
 				std::vector<IObjectiveScores<T>> newSubComplex = aggregate(newScore, withoutWorstPoint);
 #ifdef _DEBUG
 				//CheckParameterFeasible(newSubComplex);
@@ -520,9 +839,9 @@ namespace mhcpp
 		template<typename T>
 		class Complex // : IComplex
 		{
-			std::map<string, string> createTagConcat(std::initializer_list<std::tuple<string, string>> tuples)
+			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
-				//return LoggerMhHelper.MergeDictionaries(LoggerMhHelper.CreateTag(tuples), this->tags);
+				return LoggerMhHelper::MergeDictionaries(LoggerMhHelper::CreateTag({ tuples }), this->tags);
 			}
 
 			friend SubComplex<T>::SubComplex(Complex&);
@@ -536,7 +855,7 @@ namespace mhcpp
 			ICandidateFactory<T> * candidateFactory = nullptr;
 			IFitnessAssignment<double, T> fitnessAssignment;
 			// IHyperCubeOperations* hyperCubeOps;
-			ILoggerMh* logger = nullptr; // new Log4netAdapter();
+			ILoggerMh<T>* logger = nullptr; // new Log4netAdapter();
 			double ContractionRatio = 0.5;
 			double ReflectionRatio = -1;
 
@@ -581,7 +900,7 @@ namespace mhcpp
 			Complex(const std::vector<IObjectiveScores<T>>& scores, 
 				IObjectiveEvaluator<T>* evaluator, IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T>* candidateFactory,
 				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition,
-				ILoggerMh* logger = nullptr, std::map<string, string> tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
+				ILoggerMh<T>* logger = nullptr, const std::map<string, string>& tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) 
 				:
 				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF)),
@@ -706,7 +1025,7 @@ namespace mhcpp
 				// this->candidatefactory etc.
 				// this->populationInitializer = src.populationInitializer;
 				// TODO 
-				// ILoggerMh* Logger;
+				// ILoggerMh<TSys>* Logger;
 			}
 
 			ShuffledComplexEvolution(ShuffledComplexEvolution&& src)
@@ -733,7 +1052,7 @@ namespace mhcpp
 				// this->evaluator = src.evaluator;
 				// this->populationInitializer = src.populationInitializer;
 				// TODO 
-				// ILoggerMh* Logger;
+				// ILoggerMh<TSys>* Logger;
 				return *this;
 			}
 
@@ -754,18 +1073,29 @@ namespace mhcpp
 					delete candidateFactory;
 					candidateFactory = nullptr;
 				}
+				if (logger != nullptr)
+				{
+					delete logger;
+					logger = nullptr;
+				}
+			}
+
+			void ResetLog()
+			{
+				if (logger != nullptr)
+					logger->Reset();
 			}
 
 			IOptimizationResults<T> Evolve()
 			{
 				isCancelled = false;
 				terminationCondition.Reset();
-				// TODO: also reset log
+				ResetLog();
 
 				this->populationInitializer = candidateFactory->Create();
 
 				std::vector<IObjectiveScores<T>> scores = evaluateScores(evaluator, initialisePopulation());
-				//loggerWrite(scores, createSimpleMsg("Initial Population", "Initial Population"));
+				loggerWrite(scores, createSimpleMsg("Initial Population", "Initial Population"));
 				auto isFinished = terminationCondition.IsFinished();
 				if (isFinished)
 				{
@@ -795,12 +1125,11 @@ namespace mhcpp
 							//loggerWrite(sortByFitness(complexPoints).First(), createSimpleMsg("Best point in complex", "Complex No " + currentComplex.ComplexId));
 						}
 					}
-					//OnAdvanced( new ComplexEvolutionEvent( complexes ) );
 					string shuffleMsg = "Shuffling No " + std::to_string(CurrentShuffle);
 					auto shufflePoints = aggregate(complexes);
-					//loggerWrite(shufflePoints, createSimpleMsg(shuffleMsg, shuffleMsg));
+					loggerWrite(shufflePoints, createSimpleMsg(shuffleMsg, shuffleMsg));
 					this->PopulationAtShuffling = sortByFitness(shufflePoints);
-					//loggerWrite(PopulationAtShuffling[0], createSimpleMsg("Best point in shuffle", shuffleMsg));
+					loggerWrite(PopulationAtShuffling[0], createSimpleMsg("Best point in shuffle", shuffleMsg));
 					auto bufferCplx = complexes;
 					complexes = shuffle(complexes);
 					for (auto c : bufferCplx) delete c;
@@ -897,7 +1226,7 @@ namespace mhcpp
 				src.populationInitializer = nullptr;
 				src.candidateFactory = nullptr;
 				// TODO 
-				// ILoggerMh* Logger;
+				// ILoggerMh<TSys>* logger;
 			}
 
 			void CopyBasicsFrom(const ShuffledComplexEvolution& src)
@@ -931,7 +1260,7 @@ namespace mhcpp
 			IFitnessAssignment<double, T> fitnessAssignment;
 			double trapezoidalPdfParam;
 
-			ILoggerMh* Logger;
+			ILoggerMh<T>* logger = nullptr;
 
 			int pmin = 5;
 			int p = 5, m = 27, q = 14, alpha = 3, beta = 27;
@@ -1179,6 +1508,24 @@ namespace mhcpp
 			double ContractionRatio;
 			double ReflectionRatio;
 
+			void loggerWrite(const std::vector<IObjectiveScores<T>>& scores, const std::map<string, string>& ctags)
+			{
+				auto tags = LoggerMhHelper::MergeDictionaries(this->logTags, ctags);
+				LoggerMhHelper::Write(scores, tags, this->logger);
+			}
+
+			void loggerWrite(const FitnessAssignedScores<double, T>& scores, const std::map<string, string>& ctags)
+			{
+				auto tags = LoggerMhHelper::MergeDictionaries(this->logTags, ctags);
+				LoggerMhHelper::Write(scores, tags, this->logger);
+			}
+
+			void loggerWrite(const string& msg, const std::map<string, string>& ctags)
+			{
+				auto tags = LoggerMhHelper::MergeDictionaries(this->logTags, ctags);
+				LoggerMhHelper::Write(msg, tags, this->logger);
+			}
+
 			void Cancel()
 			{
 				isCancelled = true;
@@ -1204,14 +1551,13 @@ namespace mhcpp
 
 			void logTerminationConditionMet()
 			{
-				//auto tags = createSimpleMsg("Termination condition", "Termination condition");
-				//loggerWrite(string.Format("Termination condition using {0} is met", terminationCondition->GetType().Name), tags);
+				auto tags = createSimpleMsg("Termination condition", "Termination condition");
+				loggerWrite(string("Termination condition using ") + typeid(terminationCondition).name() + " is met", tags);
 			}
 
 			std::map<string, string> createSimpleMsg(string message, string category)
 			{
-				//return LoggerMhHelper.CreateTag(LoggerMhHelper.MkTuple("Message", message), LoggerMhHelper.MkTuple("Category", category));
-				return std::map<string, string>();
+				return LoggerMhHelper::CreateTag({ LoggerMhHelper::MkTuple("Message", message), LoggerMhHelper::MkTuple("Category", category) });
 			}
 
 			void execParallel(std::vector<Complex<T>*>& complexes)
@@ -1287,25 +1633,13 @@ namespace mhcpp
 
 			Complex<T>* createComplex(std::vector<IObjectiveScores<T>> scores)
 			{
-				//IHyperCubeOperationsFactory* hyperCubeOperationsFactory = dynamic_cast<IHyperCubeOperationsFactory*>(populationInitializer);
-				//if (hyperCubeOperationsFactory == nullptr)
-				//	throw std::logic_error("Currently SCE uses an implementation of a 'complex' that needs a population initializer that implements IHyperCubeOperationsFactory");
-
-				//auto loggerTags = LoggerMhHelper.MergeDictionaries(logTags, LoggerMhHelper.CreateTag(LoggerMhHelper.MkTuple("CurrentShuffle", std::to_string(this->CurrentShuffle))));
+				auto loggerTags = LoggerMhHelper::MergeDictionaries(logTags, 
+					LoggerMhHelper::CreateTag({ LoggerMhHelper::MkTuple("CurrentShuffle", std::to_string(this->CurrentShuffle)) } ));
 
 				return new Complex<T>(scores, evaluator, rng, populationInitializer,
 					fitnessAssignment, this->terminationCondition,
-					nullptr, std::map<string, string>(), q, alpha, beta, trapezoidalPdfParam,
+					this->logger, loggerTags, q, alpha, beta, trapezoidalPdfParam,
 					options, this->ReflectionRatio, this->ContractionRatio);
-
-				//auto complex = new Complex<T>(scores, m, q, alpha, beta,
-				//	(evaluator->SupportsThreadSafeCloning ? evaluator->Clone() : evaluator),
-				//	rng.CreateFactory(),
-				//	getFitnessAssignment(), hyperCubeOperationsFactory.CreateNew(this->rng), logger: this->logger,
-				//	tags : loggerTags, factorTrapezoidalPDF : this->trapezoidalPdfParam,
-				//   options : this->options, reflectionRatio : this->ReflectionRatio, contractionRatio : this->ContractionRatio);
-
-				//complex.TerminationCondition = createMaxWalltimeCondition(this->terminationCondition);
 			}
 
 			// https://github.com/jmp75/metaheuristics/issues/3
