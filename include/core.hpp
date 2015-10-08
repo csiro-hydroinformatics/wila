@@ -87,6 +87,17 @@ namespace mhcpp
 				s += v + ":" + std::to_string(GetValue(v)) + ", ";
 			return s;
 		}
+
+		virtual map<string, double> GetValues() const
+		{
+			map<string, double> s;
+			auto vnames = GetVariableNames();
+			for (auto& v : vnames)
+				s[v] = GetValue(v);
+			return s;
+		}
+
+
 	};
 
 	template<typename T = double>
@@ -188,6 +199,29 @@ namespace mhcpp
 			}
 			s += SystemConfiguration().ToString();
 			return s;
+		}
+
+		map<string, double> GetObjectiveValues() const
+		{
+			map<string, double> s;
+			for (size_t i = 0; i < this->ObjectiveCount(); i++)
+				s[this->ObjectiveName(i)] = this->Value(i);
+			return s;
+		}
+
+		map<string, double> GetParameterValues() const
+		{
+			return SystemConfiguration().GetValues();
+		}
+
+		static std::vector<TSysConf> GetSystemConfigurations(const std::vector<IObjectiveScores<TSysConf>>& points)
+		{
+			std::vector<TSysConf> result;
+			for (size_t i = 0; i < points.size(); i++)
+			{
+				result.push_back(points[i].SystemConfiguration());
+			}
+			return result;
 		}
 
 	private:
@@ -632,6 +666,26 @@ namespace mhcpp
 		/// Gets the objective scores
 		/// </summary>
 		IObjectiveScores<TSys> Scores() const { return scores; }
+
+		static std::vector<IObjectiveScores<TSys>> GetScores(const std::vector<FitnessAssignedScores<double, TSys>>& points)
+		{
+			std::vector<IObjectiveScores<TSys>> result;
+			for (size_t i = 0; i < points.size(); i++)
+			{
+				result.push_back(points[i].Scores());
+			}
+			return result;
+		}
+
+		static std::vector<TSys> GetSystemConfigurations(const std::vector<FitnessAssignedScores<double, TSys>>& points)
+		{
+			std::vector<TSys> result;
+			for (size_t i = 0; i < points.size(); i++)
+			{
+				result.push_back(points[i].Scores().SystemConfiguration());
+			}
+			return result;
+		}
 
 
 		/// <summary>

@@ -21,10 +21,248 @@ namespace mhcpp
 			//virtual void Write(FitnessAssignedScores<double> worstPoint, const std::map<string, string>& ctags) = 0;
 			virtual void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags) = 0;
 			virtual void Write(const string& message, const std::map<string, string>& ctags) = 0;
-			virtual void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags);
-			virtual void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& ctags);
-			virtual void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags);
+			virtual void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags) = 0;
+			virtual void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& ctags) = 0;
+			virtual void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags) = 0;
 			virtual void Reset() = 0;
+
+			virtual std::map<string, vector<string>>GetStringData() = 0;
+			virtual std::map<string, vector<double>>GetNumericData() = 0;
+			virtual int GetLength() = 0;
+		};
+
+
+
+		template<class TSys>
+		class SimpleLogger : public ILoggerMh < TSys >
+		{
+		public:
+			void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags)
+			{
+				Add(LogEntry(newPoint->GetValues(), ctags));
+			}
+			void Write(const string& message, const std::map<string, string>& ctags)
+			{
+				Add(LogEntry(message, ctags));
+			}
+			void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags)
+			{
+				// TODO: add fitness if/when use case required.
+				Write(scores.Scores(), tags);
+			}
+
+			void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& tags)
+			{
+				// TODO: add fitness if/when use case required.
+				Write(FitnessAssignedScores<double, TSys>::GetScores(scores), tags);
+			}
+
+			static vector<map<string, double>> flattenInfo(const std::vector<IObjectiveScores<TSys>>& scores)
+			{
+				vector<map<string, double>> r;
+				for (auto& s : scores)
+					r.push_back(flattenInfo(s));
+				return r;
+			}
+
+			static map<string, double> flattenInfo(const IObjectiveScores<TSys>& scores)
+			{
+				return LoggerMhHelper::MergeDictionaries<string, double>(
+					scores.GetObjectiveValues(),
+					scores.GetParameterValues()
+					);
+			}
+
+			void Write(const IObjectiveScores<TSys>& scores, const std::map<string, string>& tags)
+			{
+				Add(LogEntry(flattenInfo(scores), tags));
+			}
+
+			void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags)
+			{
+				vector<map<string, double>> logInfo = flattenInfo(scores);
+				Add(LogEntry(logInfo, tags));
+			}
+			void Reset()
+			{
+				entries.clear();
+			}
+
+			vector<string> NamesStringData()
+			{
+				std::set<string> keys;
+				for (auto& e : entries)
+					e.AddStringDataKeys(keys);
+				vector<string> res;
+				for (auto& k : keys)
+					res.push_back(k);
+				return res;
+			}
+
+			vector<string> NamesNumericData()
+			{
+				std::set<string> keys;
+				for (auto& e : entries)
+					e.AddNumericDataKeys(keys);
+				vector<string> res;
+				for (auto& k : keys)
+					res.push_back(k);
+				return res;
+			}
+
+			std::map<string, vector<string>> GetStringData()
+			{
+				vector<string> keys = NamesStringData();
+				int n = GetLength();
+				map<string, vector<string>> result;
+				for (auto& k : keys)
+					result[k] = vector<string>(n);
+				int offset = 0;
+				for (auto& e : entries)
+				{
+					int ne = e.GetLength();
+					e.FillTags(keys, result, offset);
+					offset += ne;
+				}
+				return result;
+			}
+
+			std::map<string, vector<double>> GetNumericData()
+			{
+				vector<string> keys = NamesNumericData();
+				int n = GetLength();
+				map<string, vector<double>> result;
+				for (auto& k : keys)
+					result[k] = vector<double>(n);
+				int offset = 0;
+				for (auto& e : entries)
+				{
+					int ne = e.GetLength();
+					e.FillNumerics(keys, result, offset);
+					offset += ne;
+				}
+				return result;
+			}
+
+			int GetLength()
+			{
+				int result = 0;
+				for (auto& e : entries)
+				{ }
+				return result;
+			}
+		private:
+			class LogEntry
+			{
+			public:
+				LogEntry(const string& message, const map<string, string>& tags)
+				{
+					map<string, string> m;
+					m["Message"] = message;
+					this->tags = LoggerMhHelper::MergeDictionaries<>(m, tags);
+				}
+
+				LogEntry(const map<string, double>& data, const map<string, string>& tags)
+				{
+					this->data.push_back(data);
+					this->tags = tags;
+				}
+
+				LogEntry(const vector<map<string, double>>& data, const map<string, string>& tags)
+				{
+					for (auto& d : data)
+						this->data.push_back(d);
+					this->tags = tags;
+				}
+
+				LogEntry(const LogEntry& src)
+				{
+					this->data = src.data;
+					this->tags = src.tags;
+				}
+
+				LogEntry(LogEntry&& src)
+				{
+					std::swap(this->data, src.data);
+					std::swap(this->tags, src.tags);
+				}
+
+				LogEntry& operator=(const LogEntry& src)
+				{
+					if (&src == this){
+						return *this;
+					}
+					this->data = src.data;
+					this->tags = src.tags;
+					return *this;
+				}
+
+				LogEntry& operator=(LogEntry&& src)
+				{
+					if (&src == this){
+						return *this;
+					}
+					std::swap(this->data, src.data);
+					std::swap(this->tags, src.tags);
+					return *this;
+				}
+
+				void AddStringDataKeys(std::set<string>& keys)
+				{
+					for (auto& tag : this->tags)
+						keys.emplace(tag.first);
+				}
+
+				void AddNumericDataKeys(std::set<string>& keys)
+				{
+					if (data.size() == 0)
+						return;
+					// HACK, but OK if we are requiring uniform num data keys
+					for (auto& kvp : data[0])
+						keys.emplace(kvp.first);
+				}
+
+				void FillTags(const vector<string>& keys, map<string, vector<string>> & toFill, int offset)
+				{
+					int n = GetLength();
+					for (auto& k : keys)
+					{
+						if (LoggerMhHelper::HasKey(tags, k))
+						{
+							vector<string>& v = toFill[k];
+							for (size_t i = 0; i < n; i++)
+								v[i + offset] = tags[k];
+						}
+					}
+				}
+
+				void FillNumerics(const vector<string>& keys, map<string, vector<double>> & toFill, int offset)
+				{
+					for (auto& k : keys)
+					{
+						vector<double>& v = toFill[k];
+						for (size_t i = 0; i < data.size(); i++)
+						{
+							if (!LoggerMhHelper::HasKey(data[i], k))
+								throw std::logic_error("Simple log: keys for numeric data must always exist: " + k);
+							v[i + offset] = data[i][k];
+						}
+					}
+				}
+
+				int GetLength() { return data.size(); }
+
+			private:
+				vector<map<string, double>> data;
+				map<string, string> tags;
+			};
+
+			vector<LogEntry> entries;
+
+			void Add(const LogEntry& entry)
+			{
+				this->entries.push_back(entry);
+			}
 		};
 
 		class LoggerMhHelper
@@ -59,14 +297,21 @@ namespace mhcpp
 					logger->Write(infoMsg, tags);
 			}
 
-			static std::map<string, string> MergeDictionaries(const std::map<string, string>& first, const std::map<string, string>& second)
+			template<typename K = string, typename V = string>
+			static std::map<K, V> MergeDictionaries(const std::map<K, V>& first, const std::map<K, V>& second)
 			{
-				std::map<string, string> result(first);
+				std::map<K, V> result(first);
 				for (auto& x : second)
 				{
 					result[x.first] = x.second;
 				}
 				return result;
+			}
+
+			template<typename K = string, typename V = string>
+			static bool HasKey(const std::map<K, V>& m, const string& key)
+			{
+				return (m.find(key) != m.end());
 			}
 
 			static std::map<string, string> CreateTag(const std::initializer_list<std::tuple<string, string>>& tuples)
@@ -379,7 +624,7 @@ namespace mhcpp
 
 			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
-				return LoggerMhHelper::MergeDictionaries(LoggerMhHelper::CreateTag({ tuples }), this->tags);
+				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag({ tuples }), this->tags);
 			}
 
 			void Evolve()
@@ -558,19 +803,19 @@ namespace mhcpp
 
 			void loggerWrite(const std::vector<IObjectiveScores<T>>& scores, const std::map<string, string>& ctags)
 			{
-				auto tags = LoggerMhHelper::MergeDictionaries(this->tags, ctags);
+				auto tags = LoggerMhHelper::MergeDictionaries<>(this->tags, ctags);
 				LoggerMhHelper::Write(scores, tags, this->logger);
 			}
 
 			void loggerWrite(const FitnessAssignedScores<double, T>& scores, const std::map<string, string>& ctags)
 			{
-				auto tags = LoggerMhHelper::MergeDictionaries(this->tags, ctags);
+				auto tags = LoggerMhHelper::MergeDictionaries<>(this->tags, ctags);
 				LoggerMhHelper::Write(scores, tags, this->logger);
 			}
 
 			void loggerWrite(const std::vector<FitnessAssignedScores<double, T>>& scores, const std::map<string, string>& ctags)
 			{
-				auto tags = LoggerMhHelper::MergeDictionaries(this->tags, ctags);
+				auto tags = LoggerMhHelper::MergeDictionaries<>(this->tags, ctags);
 				LoggerMhHelper::Write<double,T>(scores, tags, this->logger);
 			}
 
@@ -594,11 +839,7 @@ namespace mhcpp
 
 			std::vector<IObjectiveScores<T>> aggregatePoints(const std::vector<FitnessAssignedScores<double, T>>& subComplex, const std::vector<IObjectiveScores<T>>& leftOutFromSubcomplex)
 			{
-				std::vector<IObjectiveScores<T>> result;
-				for (size_t i = 0; i < subComplex.size(); i++)
-				{
-					result.push_back(subComplex.at(i).Scores());
-				}
+				std::vector<IObjectiveScores<T>> result = FitnessAssignedScores<double, T>::GetScores(subComplex);
 				for (size_t i = 0; i < leftOutFromSubcomplex.size(); i++)
 				{
 					result.push_back(leftOutFromSubcomplex[i]);
@@ -610,9 +851,7 @@ namespace mhcpp
 			{
 				IObjectiveScores<T> scoreNewPoint = evaluator->EvaluateScore(newPoint);
 
-				std::vector<IObjectiveScores<T>> scores;
-				for (auto& s : withoutWorstPoint)
-					scores.push_back(s.Scores());
+				std::vector<IObjectiveScores<T>> scores = FitnessAssignedScores<double, T>::GetScores(withoutWorstPoint);
 				scores.push_back(scoreNewPoint);
 				auto fitness = fitnessAssignment.AssignFitness(scores);
 				candidateSubcomplex.clear();
@@ -647,32 +886,17 @@ namespace mhcpp
 
 			static std::vector<T> convertAllToHyperCube(const std::vector<FitnessAssignedScores<double, T>>& points)
 			{
-				std::vector<T> result;
-				for (size_t i = 0; i < points.size(); i++)
-				{
-					result.push_back(points[i].Scores().SystemConfiguration());
-				}
-				return result;
+				return FitnessAssignedScores<double, T>::GetSystemConfigurations(points);
 			}
 
 			static std::vector<T> convertAllToHyperCube(const std::vector<IObjectiveScores<T>>& points)
 			{
-				std::vector<T> result;
-				for (size_t i = 0; i < points.size(); i++)
-				{
-					result.push_back(points[i].SystemConfiguration());
-				}
-				return result;
+				return IObjectiveScores<T>::GetSystemConfigurations(points);
 			}
 
 			static std::vector<IObjectiveScores<T>> convertToScores(const std::vector<FitnessAssignedScores<double, T>>& points)
 			{
-				std::vector<IObjectiveScores<T>> result;
-				for (size_t i = 0; i < points.size(); i++)
-				{
-					result.push_back(points[i].Scores());
-				}
-				return result;
+				return FitnessAssignedScores<double, T>::GetScores(points);
 			}
 
 			std::vector<FitnessAssignedScores<double, T>> removePoint(const std::vector<FitnessAssignedScores<double, T>>& subComplex, FitnessAssignedScores<double, T> worstPoint)
@@ -841,7 +1065,7 @@ namespace mhcpp
 		{
 			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
-				return LoggerMhHelper::MergeDictionaries(LoggerMhHelper::CreateTag({ tuples }), this->tags);
+				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag({ tuples }), this->tags);
 			}
 
 			friend SubComplex<T>::SubComplex(Complex&);
@@ -1078,6 +1302,18 @@ namespace mhcpp
 					delete logger;
 					logger = nullptr;
 				}
+			}
+
+			void SetLogger()
+			{
+				if (logger != nullptr)
+					delete logger;
+				logger = new SimpleLogger<T>();
+			}
+
+			ILoggerMh<T>* GetLogger()
+			{
+				return logger;
 			}
 
 			void ResetLog()
@@ -1510,19 +1746,19 @@ namespace mhcpp
 
 			void loggerWrite(const std::vector<IObjectiveScores<T>>& scores, const std::map<string, string>& ctags)
 			{
-				auto tags = LoggerMhHelper::MergeDictionaries(this->logTags, ctags);
+				auto tags = LoggerMhHelper::MergeDictionaries<>(this->logTags, ctags);
 				LoggerMhHelper::Write(scores, tags, this->logger);
 			}
 
 			void loggerWrite(const FitnessAssignedScores<double, T>& scores, const std::map<string, string>& ctags)
 			{
-				auto tags = LoggerMhHelper::MergeDictionaries(this->logTags, ctags);
+				auto tags = LoggerMhHelper::MergeDictionaries<>(this->logTags, ctags);
 				LoggerMhHelper::Write(scores, tags, this->logger);
 			}
 
 			void loggerWrite(const string& msg, const std::map<string, string>& ctags)
 			{
-				auto tags = LoggerMhHelper::MergeDictionaries(this->logTags, ctags);
+				auto tags = LoggerMhHelper::MergeDictionaries<>(this->logTags, ctags);
 				LoggerMhHelper::Write(msg, tags, this->logger);
 			}
 
@@ -1633,7 +1869,7 @@ namespace mhcpp
 
 			Complex<T>* createComplex(std::vector<IObjectiveScores<T>> scores)
 			{
-				auto loggerTags = LoggerMhHelper::MergeDictionaries(logTags, 
+				auto loggerTags = LoggerMhHelper::MergeDictionaries<>(logTags, 
 					LoggerMhHelper::CreateTag({ LoggerMhHelper::MkTuple("CurrentShuffle", std::to_string(this->CurrentShuffle)) } ));
 
 				return new Complex<T>(scores, evaluator, rng, populationInitializer,
