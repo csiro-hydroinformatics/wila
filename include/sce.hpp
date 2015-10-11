@@ -148,7 +148,7 @@ namespace mhcpp
 			{
 				int result = 0;
 				for (auto& e : entries)
-				{ }
+					result += e.GetLength();
 				return result;
 			}
 		private:
