@@ -56,28 +56,28 @@ namespace mhcpp
 		/// </summary>
 		/// <param name="variableName"></param>
 		/// <returns></returns>
-		virtual T GetValue(string variableName) const = 0;
+		virtual T GetValue(const string& variableName) const = 0;
 
 		/// <summary>
 		/// Gets the maximum feasible value for a variable
 		/// </summary>
 		/// <param name="variableName"></param>
 		/// <returns></returns>
-		virtual T GetMaxValue(string variableName) const = 0;
+		virtual T GetMaxValue(const string& variableName) const = 0;
 
 		/// <summary>
 		/// Gets the minimum feasible value for a variable
 		/// </summary>
 		/// <param name="variableName"></param>
 		/// <returns></returns>
-		virtual T GetMinValue(string variableName) const = 0;
+		virtual T GetMinValue(const string& variableName) const = 0;
 
 		/// <summary>
 		/// Sets the value of one of the variables in the hypercube
 		/// </summary>
 		/// <param name="variableName"></param>
 		/// <param name="value"></param>
-		virtual void SetValue(string variableName, T value) = 0;
+		virtual void SetValue(const string& variableName, T value) = 0;
 
 		virtual string ToString() const
 		{
@@ -105,9 +105,9 @@ namespace mhcpp
 	{
 	public:
 		virtual ~IHyperCubeSetBounds() {}
-		virtual void SetMinValue(string variableName, T value) = 0;
-		virtual void SetMaxValue(string variableName, T value) = 0;
-		virtual void SetMinMaxValue(string variableName, T min, T max, T value) = 0;
+		virtual void SetMinValue(const string& variableName, T value) = 0;
+		virtual void SetMaxValue(const string& variableName, T value) = 0;
+		virtual void SetMinMaxValue(const string& variableName, T min, T max, T value) = 0;
 	};
 
 	template<typename TSysConfig>
@@ -855,13 +855,13 @@ namespace mhcpp
 			def[name] = MMV(name, min, max, value);
 		}
 		size_t Dimensions() const { return def.size(); }
-		T GetValue(string variableName) const { return def.at(variableName).Value; }
-		T GetMaxValue(string variableName) const { return def.at(variableName).Max; }
-		T GetMinValue(string variableName) const { return def.at(variableName).Min; }
-		void SetValue(string variableName, T value)    { def[variableName].Value = value; }
-		void SetMinValue(string variableName, T value) { def[variableName].Min = value; }
-		void SetMaxValue(string variableName, T value) { def[variableName].Max = value; }
-		void SetMinMaxValue(string variableName, T min, T max, T value) {
+		T GetValue(const string& variableName) const { return def.at(variableName).Value; }
+		T GetMaxValue(const string& variableName) const { return def.at(variableName).Max; }
+		T GetMinValue(const string& variableName) const { return def.at(variableName).Min; }
+		void SetValue(const string& variableName, T value)    { def[variableName].Value = value; }
+		void SetMinValue(const string& variableName, T value) { def[variableName].Min = value; }
+		void SetMaxValue(const string& variableName, T value) { def[variableName].Max = value; }
+		void SetMinMaxValue(const string& variableName, T min, T max, T value) {
 			SetMinValue(variableName, min);
 			SetMaxValue(variableName, max);
 			SetValue(variableName, value);
