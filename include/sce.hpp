@@ -1368,7 +1368,6 @@ namespace mhcpp
 					loggerWrite(PopulationAtShuffling[0], createSimpleMsg("Best point in shuffle", shuffleMsg));
 					auto bufferCplx = complexes;
 					complexes = shuffle(complexes);
-					for (auto c : bufferCplx) delete c;
 
 					CurrentShuffle++;
 					isFinished = terminationCondition.IsFinished();
@@ -1800,7 +1799,10 @@ namespace mhcpp
 			{
 				for (int i = 0; i < complexes.size(); i++)
 					complexes.at(i)->ComplexId = std::to_string(i);
+				// TODO:
 				//Parallel.ForEach(complexes, parallelOptions, c = > c.Evolve());
+				for (int i = 0; i < complexes.size(); i++)
+					complexes.at(i)->Evolve();
 			}
 
 			string GetDescription()
@@ -1808,13 +1810,22 @@ namespace mhcpp
 				throw std::logic_error("Not implemented");
 			}
 
-
 			std::vector<Complex<T>*> shuffle(const std::vector<Complex<T>*>& complexes)
 			{
 				std::vector<IObjectiveScores<T>> population = aggregate(complexes);
 				auto newComplexes = partition(population);
+				Dispose(complexes);
 				return newComplexes;
 			}
+
+			void Dispose(const std::vector<Complex<T>*>& complexes)
+			{
+				for (size_t i = 0; i < complexes.size(); i++)
+				{
+					delete complexes[i];
+				}
+			}
+
 
 			static std::vector<IObjectiveScores<T>> aggregate(const std::vector<Complex<T>*>& complexes)
 			{
