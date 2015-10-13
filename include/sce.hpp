@@ -29,6 +29,7 @@ namespace mhcpp
 			virtual std::map<string, vector<string>>GetStringData() = 0;
 			virtual std::map<string, vector<double>>GetNumericData() = 0;
 			virtual int GetLength() = 0;
+			virtual ILoggerMh<TSys>* CreateNew() = 0;
 		};
 
 
@@ -151,6 +152,12 @@ namespace mhcpp
 					result += e.GetLength();
 				return result;
 			}
+
+			ILoggerMh<TSys>* CreateNew()
+			{
+				return new SimpleLogger();
+			}
+
 		private:
 			class LogEntry
 			{
@@ -159,20 +166,21 @@ namespace mhcpp
 				{
 					map<string, string> m;
 					m["Message"] = message;
-					this->tags = LoggerMhHelper::MergeDictionaries<>(m, tags);
+					SetTags(LoggerMhHelper::MergeDictionaries<>(m, tags));
 				}
+
 
 				LogEntry(const map<string, double>& data, const map<string, string>& tags)
 				{
 					this->data.push_back(data);
-					this->tags = tags;
+					SetTags(tags);
 				}
 
 				LogEntry(const vector<map<string, double>>& data, const map<string, string>& tags)
 				{
 					for (auto& d : data)
 						this->data.push_back(d);
-					this->tags = tags;
+					SetTags(tags);
 				}
 
 				LogEntry(const LogEntry& src)
@@ -255,6 +263,14 @@ namespace mhcpp
 			private:
 				vector<map<string, double>> data;
 				map<string, string> tags;
+				void SetTags(const map<string, string>& tags)
+				{
+#ifdef _DEBUG
+					if (LoggerMhHelper::HasKey(tags, ""))
+						throw std::logic_error("tags keys cannot be empty strings");
+#endif
+					this->tags = tags;
+				}
 			};
 
 			vector<LogEntry> entries;
@@ -321,6 +337,13 @@ namespace mhcpp
 				{
 					result[get<0>(x)] = get<1>(x);
 				}
+				return result;
+			}
+
+			static std::map<string, string> CreateTag(const std::tuple<string, string>& x)
+			{
+				std::map<string, string> result;
+				result[get<0>(x)] = get<1>(x);
 				return result;
 			}
 
@@ -821,8 +844,8 @@ namespace mhcpp
 
 			std::tuple<string, string> createTagCatComplexNo()
 			{
-				//return LoggerMhHelper::MkTuple("Category", "Complex No " + complexId);
-				return std::tuple<string, string>();
+				string id = (this->complex == nullptr ? string("NULL") : this->complex->ComplexId);
+				return LoggerMhHelper::MkTuple("Category", "Complex No " + id);
 			}
 
 			void loggerWrite(const T& point, const std::map<string, string>& ctags)
@@ -1087,6 +1110,9 @@ namespace mhcpp
 			double factorTrapezoidalPDF = -1;
 			SceOptions options = SceOptions::None;
 
+
+			bool ownEvaluator = true;
+			bool ownCandidateFactory = true;
 			bool IsCancelled = false;
 
 			ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition;
@@ -1095,7 +1121,7 @@ namespace mhcpp
 
 			IObjectiveEvaluator<T>* evaluator = nullptr;
 
-			void Init(const std::vector<IObjectiveScores<T>>& scores, IObjectiveEvaluator<T>* evaluator, int q, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
+			void Init(const std::vector<IObjectiveScores<T>>& scores, IObjectiveEvaluator<T>* evaluator, bool ownEvaluator, int q, int alpha = 2, int beta = 3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5)
 			{
 				// TODO checks on consistencies.
@@ -1108,21 +1134,22 @@ namespace mhcpp
 				this->ReflectionRatio = reflectionRatio;
 				this->ContractionRatio = contractionRatio;
 				this->evaluator = evaluator;
+				this->ownEvaluator = ownEvaluator;
 			}
 
-			Complex(const std::vector<IObjectiveScores<T>>& scores, IObjectiveEvaluator<T>* evaluator, int q, int seed = 0, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
+			Complex(const std::vector<IObjectiveScores<T>>& scores, IObjectiveEvaluator<T>* evaluator, bool ownEvaluator, int q, int seed = 0, int alpha = 2, int beta = 3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) :
 				rng(seed),
 				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF))
 			{
-				Init(scores, evaluator, q, alpha, beta, factorTrapezoidalPDF, options, reflectionRatio, contractionRatio);
+				Init(scores, evaluator, ownEvaluator, q, alpha, beta, factorTrapezoidalPDF, options, reflectionRatio, contractionRatio);
 			}
 
 		public:
 			string ComplexId;
 
 			Complex(const std::vector<IObjectiveScores<T>>& scores, 
-				IObjectiveEvaluator<T>* evaluator, IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T>* candidateFactory,
+				IObjectiveEvaluator<T>* evaluator, bool ownEvaluator, IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T>* candidateFactory, bool ownCandidateFactory,
 				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition,
 				ILoggerMh<T>* logger = nullptr, const std::map<string, string>& tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) 
@@ -1130,9 +1157,10 @@ namespace mhcpp
 				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF)),
 				terminationCondition(terminationCondition)
 			{
-				Init(scores, evaluator, q, alpha, beta, factorTrapezoidalPDF, options, reflectionRatio, contractionRatio);
+				Init(scores, evaluator, ownEvaluator, q, alpha, beta, factorTrapezoidalPDF, options, reflectionRatio, contractionRatio);
 				this->fitnessAssignment = fitnessAssignment;
 				this->candidateFactory = candidateFactory;
+				this->ownCandidateFactory = ownCandidateFactory;
 				this->logger = logger;
 				this->tags = tags;
 				this->rng = rng;
@@ -1140,6 +1168,18 @@ namespace mhcpp
 
 			virtual ~Complex()
 			{
+				if (ownEvaluator)
+					if (this->evaluator != nullptr)
+					{
+						delete evaluator;
+						evaluator = nullptr;
+					}
+				if (ownCandidateFactory)
+					if (this->candidateFactory != nullptr)
+					{
+						delete candidateFactory;
+						candidateFactory = nullptr;
+					}
 			}
 
 			bool IsFinished()
@@ -1186,6 +1226,8 @@ namespace mhcpp
 			  public IPopulation<double, T>
 			//where T : ICloneableSystemConfiguration
 		{
+			// needed? friend Complexes<T>(SCE&);
+
 		public:
 
 			typedef typename ITerminationCondition<T, ShuffledComplexEvolution<T>> TerminationCondition;
@@ -1347,28 +1389,13 @@ namespace mhcpp
 				if (isFinished) logTerminationConditionMet();
 				while (!isFinished && !isCancelled)
 				{
-					if (evaluator->IsCloneable())
-						execParallel(complexes);
-					else
-					{
-						for (int i = 0; i < complexes.size(); i++)
-						{
-							auto currentComplex = complexes.at(i);
-							//currentComplex.IsCancelled = isCancelled;
-
-							currentComplex->Evolve();
-							//auto complexPoints = currentComplex.GetObjectiveScores().ToArray();
-							//loggerWrite(sortByFitness(complexPoints).First(), createSimpleMsg("Best point in complex", "Complex No " + currentComplex.ComplexId));
-						}
-					}
+					evolveComplexes();
 					string shuffleMsg = "Shuffling No " + std::to_string(CurrentShuffle);
-					auto shufflePoints = aggregate(complexes);
+					auto shufflePoints = complexes.Aggregate();
 					loggerWrite(shufflePoints, createSimpleMsg(shuffleMsg, shuffleMsg));
 					this->PopulationAtShuffling = sortByFitness(shufflePoints);
 					loggerWrite(PopulationAtShuffling[0], createSimpleMsg("Best point in shuffle", shuffleMsg));
-					auto bufferCplx = complexes;
 					complexes = shuffle(complexes);
-					for (auto c : bufferCplx) delete c;
 
 					CurrentShuffle++;
 					isFinished = terminationCondition.IsFinished();
@@ -1377,10 +1404,22 @@ namespace mhcpp
 				return packageResults(complexes);
 			}
 
+			void evolveComplexes()
+			{
+				for (int i = 0; i < complexes.size(); i++)
+					complexes.at(i)->ComplexId = std::to_string(i);
+				// TODO:
+				// if (evaluator->IsCloneable())
+					//Parallel.ForEach(complexes, parallelOptions, c = > c.Evolve());
+				for (int i = 0; i < complexes.size(); i++)
+					complexes.at(i)->Evolve();
+				// Optionally add some log information.
+			}
+
 			std::vector<FitnessAssignedScores<double, T>> Population()
 			{
 				if (complexes.size() == 0) return std::vector<FitnessAssignedScores<double, T>>();
-				return sortByFitness(aggregate(complexes));
+				return sortByFitness(complexes.Aggregate());
 			}
 
 		private:
@@ -1435,6 +1474,132 @@ namespace mhcpp
 				this->ContractionRatio = contractionRatio;
 			}
 
+
+			class Complexes
+			{
+			public:
+				ShuffledComplexEvolution<T>* sce = nullptr;
+				Complexes(const std::vector<FitnessAssignedScores<double, T>>& sortedScores, ShuffledComplexEvolution<T>* sce)// int p, int m, int shuffleCount, const std::map<string, string>& logTags)
+				{
+					this->sce = sce;
+					int p = sce->p;
+					int m = sce->m;
+					for (int a = 0; a < p; a++)
+					{
+						std::vector<FitnessAssignedScores<double, T>> sample;
+						for (int k = 1; k <= m; k++)
+							sample.push_back(sortedScores[a + p * (k - 1)]);
+						std::vector<IObjectiveScores<T>> scores = getScores(sample);
+						//seed++; // TODO: check why this was done.
+						Complex<T>* complex = createComplex(scores);
+						complex->ComplexId = std::to_string(sce->CurrentShuffle) + "_" + std::to_string(a + 1);
+						complexes.push_back(complex);
+					}
+				}
+
+				Complexes() { }
+
+				Complexes(const Complexes& src)
+				{
+					throw std::logic_error("deep copy construction of Complexes is not supported");
+					this->sce = src.sce;
+					this->complexes = src.complexes;
+				}
+
+				Complexes(Complexes&& src)
+				{
+					std::swap(this->sce, src.sce);
+					std::swap(this->complexes, src.complexes);
+					src.DisposeComplexes();
+				}
+
+				Complexes& operator=(const Complexes& src)
+				{
+					throw std::logic_error("deep copy construction of Complexes is not supported");
+					if (&src == this){
+						return *this;
+					}
+					this->sce = src.sce;
+					this->complexes = src.complexes;
+					return *this;
+				}
+
+				Complexes& operator=(Complexes&& src)
+				{
+					if (&src == this){
+						return *this;
+					}
+					std::swap(this->sce, src.sce);
+					std::swap(this->complexes, src.complexes);
+					src.DisposeComplexes();
+					return *this;
+				}
+
+
+				~Complexes()
+				{
+					DisposeComplexes();
+				}
+
+				Complex<T>* at(size_t i) { return complexes.at(i); }
+
+				size_t size() const { return complexes.size(); }
+
+				std::vector<IObjectiveScores<T>> Aggregate()
+				{
+					std::vector<IObjectiveScores<T>> result;
+					for (auto c : complexes)
+					{
+						auto scores = c->GetObjectiveScores();
+#ifdef _DEBUG
+						//CheckParameterFeasible(scores);
+#endif
+						for (auto& s : scores)
+						{
+							result.push_back(s);
+						}
+					}
+					return result;
+				}
+
+			private:
+
+				void DisposeComplexes()
+				{
+					for (size_t i = 0; i < complexes.size(); i++)
+						if(complexes[i]!= nullptr)
+						{
+							delete complexes[i];
+							complexes[i] = nullptr;
+						}
+				}
+
+				Complex<T>* createComplex(std::vector<IObjectiveScores<T>> scores)
+				{
+					auto loggerTags = LoggerMhHelper::MergeDictionaries<>(sce->logTags,
+						LoggerMhHelper::CreateTag(LoggerMhHelper::MkTuple("CurrentShuffle", std::to_string(sce->CurrentShuffle))));
+
+					// TODO: reconsider how to handle parallel executions.
+					bool ownedPtr = (sce->evaluator->IsCloneable());
+					IObjectiveEvaluator<T>* evaluator = (ownedPtr ? sce->evaluator->Clone() : sce->evaluator );
+
+					// We should always create a new candidate factory, 
+					// to have reproducible outputs whether multi-threaded or not
+					ICandidateFactory<T>* candidateFactory = sce->candidateFactory->Create();
+					bool ownedCandidateFactory = true;
+
+					return new Complex<T>(scores, evaluator, ownedPtr, sce->rng, 
+						candidateFactory, ownedCandidateFactory,
+						sce->fitnessAssignment, sce->terminationCondition,
+						sce->logger, loggerTags, sce->q, sce->alpha, sce->beta, sce->trapezoidalPdfParam,
+						sce->options, sce->ReflectionRatio, sce->ContractionRatio);
+				}
+
+				std::vector<Complex<T>*> complexes;
+			};
+
+			Complexes complexes;
+
 			void MoveFrom(ShuffledComplexEvolution& src)
 			{
 				this->terminationCondition = std::move(src.terminationCondition);
@@ -1453,16 +1618,17 @@ namespace mhcpp
 				this->trapezoidalPdfParam = std::move(src.trapezoidalPdfParam);
 				this->fitnessAssignment = std::move(src.fitnessAssignment);
 				this->rng = std::move(src.rng);
+				this->complexes = std::move(src.complexes);
 
 				this->evaluator = std::move(src.evaluator);
 				this->populationInitializer = std::move(src.populationInitializer);
 				this->candidateFactory = std::move(src.candidateFactory);
+				this->logger = std::move(src.logger);
 
 				src.evaluator = nullptr;
 				src.populationInitializer = nullptr;
 				src.candidateFactory = nullptr;
-				// TODO 
-				// ILoggerMh<TSys>* logger;
+				src.logger = nullptr;
 			}
 
 			void CopyBasicsFrom(const ShuffledComplexEvolution& src)
@@ -1485,6 +1651,8 @@ namespace mhcpp
 				this->trapezoidalPdfParam = src.trapezoidalPdfParam;
 				this->fitnessAssignment = src.fitnessAssignment;
 				this->rng = src.rng;
+				this->complexes = src.complexes;
+				this->logger = src.logger->CreateNew();
 			}
 
 			std::map<string, string> logTags;
@@ -1739,7 +1907,6 @@ namespace mhcpp
 
 			//CancellationTokenSource tokenSource = new CancellationTokenSource();
 			SceOptions options = SceOptions::None;
-			std::vector<Complex<T>*> complexes;
 
 			double ContractionRatio;
 			double ReflectionRatio;
@@ -1770,10 +1937,10 @@ namespace mhcpp
 				//tokenSource.Cancel();
 			}
 
-			static IOptimizationResults<T> packageResults(const std::vector<Complex<T>*>& complexes)
+			static IOptimizationResults<T> packageResults(Complexes& complexes)
 			{
 				//saveLog( logPopulation, fullLogFileName );
-				std::vector<IObjectiveScores<T>> population = aggregate(complexes);
+				std::vector<IObjectiveScores<T>> population = complexes.Aggregate();
 				//saveLogParetoFront( population );
 				return packageResults(population);
 			}
@@ -1791,46 +1958,16 @@ namespace mhcpp
 				loggerWrite(string("Termination condition using ") + typeid(terminationCondition).name() + " is met", tags);
 			}
 
-			std::map<string, string> createSimpleMsg(string message, string category)
-			{
-				return LoggerMhHelper::CreateTag({ LoggerMhHelper::MkTuple("Message", message), LoggerMhHelper::MkTuple("Category", category) });
-			}
-
-			void execParallel(std::vector<Complex<T>*>& complexes)
-			{
-				for (int i = 0; i < complexes.size(); i++)
-					complexes.at(i)->ComplexId = std::to_string(i);
-				//Parallel.ForEach(complexes, parallelOptions, c = > c.Evolve());
-			}
-
 			string GetDescription()
 			{
 				throw std::logic_error("Not implemented");
 			}
 
-
-			std::vector<Complex<T>*> shuffle(const std::vector<Complex<T>*>& complexes)
+			Complexes shuffle(Complexes& complexes)
 			{
-				std::vector<IObjectiveScores<T>> population = aggregate(complexes);
+				std::vector<IObjectiveScores<T>> population = complexes.Aggregate();
 				auto newComplexes = partition(population);
 				return newComplexes;
-			}
-
-			static std::vector<IObjectiveScores<T>> aggregate(const std::vector<Complex<T>*>& complexes)
-			{
-				std::vector<IObjectiveScores<T>> result;
-				for (auto c : complexes)
-				{
-					auto scores = c->GetObjectiveScores();
-#ifdef _DEBUG
-					//CheckParameterFeasible(scores);
-#endif
-					for (auto& s : scores)
-					{
-						result.push_back(s);
-					}
-				}
-				return result;
 			}
 
 			std::vector<IObjectiveScores<T>> evaluateScores(IObjectiveEvaluator<T>* evaluator, const std::vector<T>& population)
@@ -1847,35 +1984,14 @@ namespace mhcpp
 				return result;
 			}
 
-			std::vector<Complex<T>*> partition(const std::vector<FitnessAssignedScores<double, T>>& sortedScores)
+
+			Complexes partition(const std::vector<FitnessAssignedScores<double, T>>& sortedScores)
 			{
-				std::vector<Complex<T>*> result;
 				if (CurrentShuffle > 0)
 					if (this->pmin < this->p)
 						this->p = this->p - 1;
-				for (int a = 0; a < p; a++)
-				{
-					std::vector<FitnessAssignedScores<double, T>> sample;
-					for (int k = 1; k <= m; k++)
-						sample.push_back(sortedScores[a + p * (k - 1)]);
-					std::vector<IObjectiveScores<T>> scores = getScores(sample);
-					seed++; // TODO: check why this was done.
-					Complex<T>* complex = createComplex(scores);
-					complex->ComplexId = std::to_string(CurrentShuffle) + "_" + std::to_string(a + 1);
-					result.push_back(complex);
-				}
-				return result;
-			}
-
-			Complex<T>* createComplex(std::vector<IObjectiveScores<T>> scores)
-			{
-				auto loggerTags = LoggerMhHelper::MergeDictionaries<>(logTags, 
-					LoggerMhHelper::CreateTag({ LoggerMhHelper::MkTuple("CurrentShuffle", std::to_string(this->CurrentShuffle)) } ));
-
-				return new Complex<T>(scores, evaluator, rng, populationInitializer,
-					fitnessAssignment, this->terminationCondition,
-					this->logger, loggerTags, q, alpha, beta, trapezoidalPdfParam,
-					options, this->ReflectionRatio, this->ContractionRatio);
+				Complexes c = Complexes(sortedScores, this);
+				return c;
 			}
 
 			// https://github.com/jmp75/metaheuristics/issues/3
@@ -1888,7 +2004,7 @@ namespace mhcpp
 			// 		return new MaxWalltimeTerminationCondition(t.RemainingHours);
 			// }
 
-			std::vector<Complex<T>*> partition(const std::vector<IObjectiveScores<T>>& scores)
+			Complexes partition(const std::vector<IObjectiveScores<T>>& scores)
 			{
 				auto sortedScores = sortByFitness(scores);
 				//logPoints( CurrentShuffle, sortedScores );
@@ -1941,6 +2057,14 @@ namespace mhcpp
 			*/
 
 			std::vector<FitnessAssignedScores<double, T>> PopulationAtShuffling;
+
+			std::map<string, string> createSimpleMsg(string message, string category)
+			{
+				return LoggerMhHelper::CreateTag({
+					LoggerMhHelper::MkTuple("Message", message),
+					LoggerMhHelper::MkTuple("Category", category) });
+			}
+
 		};
 
 		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>

@@ -302,7 +302,7 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 		//Complex<T> cplx_noargs;
 
 		Complex<T> cplx
-			(scores, &evaluator, rng, &unif,
+			(scores, &evaluator, false, rng, &unif, false,
 			fitnessAssignment, terminationCondition, nullptr, std::map<string, string>(), q, alpha, beta);
 		THEN("The complex evolution completes without exception")
 		{
