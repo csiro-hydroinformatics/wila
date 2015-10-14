@@ -185,6 +185,14 @@ namespace mhcpp
 
 		virtual std::string ObjectiveName(int i) const { return this->objectives[i].Name; }
 
+		virtual vector<string> ObjectiveNames() const {
+			vector<string> result;
+			int n = ObjectiveCount();
+			for (size_t i = 0; i < n; i++)
+				result.push_back(ObjectiveName(i));
+			return result;
+		}
+
 		virtual double Value(int i) const { return objectives[i].Value; } //= 0;
 
 		virtual bool Maximizable(int i) const { return objectives[i].Maximizable; } //= 0;
@@ -224,7 +232,36 @@ namespace mhcpp
 			return result;
 		}
 
+		static void Sort(std::vector<IObjectiveScores<TSysConf>>& points, const string& scoreName)
+		{
+			if (points.size() == 0)
+				return; // to be confirmed, but can make sense.
+			auto names = points.at(0).ObjectiveNames();
+			int index = -1;
+			for (size_t i = 0; i < names.size(); i++)
+				if (names[i] == scoreName) {
+					index = i; break;
+				}
+			if (index < 0) throw std::logic_error(string("Score not found: ") + scoreName);
+
+			std::function<bool(const IObjectiveScores<TSysConf>& elem1, const IObjectiveScores<TSysConf>& elem2)> comparator =
+			[&index](const IObjectiveScores<TSysConf>& elem1, const IObjectiveScores<TSysConf>& elem2)
+				{
+					return IObjectiveScores<TSysConf>::BetterThan(elem1, elem2, index);
+				};
+
+			std::stable_sort(points.begin(), points.end(), comparator);
+		}
+
 	private:
+		static bool BetterThan(const IObjectiveScores<TSysConf>& elem1, const IObjectiveScores<TSysConf>& elem2, int index)
+		{
+			bool lessThan = (elem1.Value(index) < elem2.Value(index));
+			if(elem1.Maximizable(index))
+				return !lessThan;
+			return lessThan;
+		}
+
 		class ObjectiveValue
 		{
 		public:
@@ -788,6 +825,15 @@ namespace mhcpp
 		{ 
 			throw std::logic_error(string("Clone operation is not supported by default for ") + typeid(IObjectiveEvaluator<TSysConf>).name());
 		}
+
+		static std::vector<IObjectiveScores<TSysConf>> EvaluateScores(IObjectiveEvaluator<TSysConf>& evaluator, const vector<TSysConf>& systemConfigurations)
+		{
+			std::vector<IObjectiveScores<TSysConf>> result;
+			for (size_t i = 0; i < systemConfigurations.size(); i++)
+				result.push_back(evaluator.EvaluateScore(systemConfigurations.at(i)));
+			return result;
+		}
+
 	};
 
 	template<typename T, typename TSys>

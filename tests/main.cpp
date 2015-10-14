@@ -129,6 +129,38 @@ SCENARIO("Basic objective evaluator", "[objectives]") {
 	}
 }
 
+SCENARIO("Sort objective scores", "[objectives]") {
+
+	GIVEN("Single-objective calculator, L2 distance")
+	{
+		HyperCube<double> goal = createTestHc(0,0);
+
+		//IObjectiveEvaluator<HyperCube < double > >* evaluator = new TopologicalDistance<HyperCube < double > >(goal);
+		TopologicalDistance<HyperCube < double > > evaluator(goal);
+
+		vector<HyperCube<double>> points({
+			createTestHc(1, 2),
+			createTestHc(10, 10),
+			createTestHc(3, 3),
+			createTestHc(1,1)
+		});
+		string scoreName = "L2 distance";
+		vector<IObjectiveScores<HyperCube < double > >> scores = IObjectiveEvaluator<HyperCube < double > >::EvaluateScores(evaluator, points);
+		IObjectiveScores<HyperCube < double > >::Sort(scores, scoreName);
+
+		//int n = scores.size();
+		//for (size_t i = 0; i < n; ++i)
+		//	std::cout << i << ": " << scores[i].ToString() << std::endl;
+
+		REQUIRE(scores.size() == 4);
+		REQUIRE(scores[0].Value(0) == std::sqrt(1 + 1));
+		REQUIRE(scores[1].Value(0) == std::sqrt(1 + 4));
+		REQUIRE(scores[2].Value(0) == std::sqrt(9 + 9));
+		REQUIRE(scores[3].Value(0) == std::sqrt(100 + 100));
+	}
+}
+
+
 SCENARIO("RNG basics", "[rng]") {
 	IRandomNumberGeneratorFactory<> factory(123);
 	GIVEN("A random integer generator IRandomNumberGeneratorFactory<>")

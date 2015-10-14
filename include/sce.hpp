@@ -1409,11 +1409,34 @@ namespace mhcpp
 				for (int i = 0; i < complexes.size(); i++)
 					complexes.at(i)->ComplexId = std::to_string(i);
 				// TODO:
-				// if (evaluator->IsCloneable())
-					//Parallel.ForEach(complexes, parallelOptions, c = > c.Evolve());
-				for (int i = 0; i < complexes.size(); i++)
-					complexes.at(i)->Evolve();
-				// Optionally add some log information.
+//				if (evaluator->IsCloneable())
+//				{
+//#ifdef _WIN32
+//					boost::threadpool::pool tp;
+//					int nThreads = std::max(1, (int)std::thread::hardware_concurrency());
+//					tp.size_controller().resize(nThreads);
+//
+//					for (int i = 0; i < ensembleSize; i++)
+//					{
+//						threadWrappers[i] = new ModelRunnerThreadWrapper();
+//						threadWrappers[i]->Initialise(mr, i, simulationLength, states, &playedTimeSeries, &recordedTimeSeries);
+//						boost::threadpool::schedule(tp, boost::bind(&ModelRunnerThreadWrapper::Run, threadWrappers[i]));
+//					}
+//
+//					tp.wait();
+//
+//					for (int i = 0; i < ensembleSize; i++)
+//						delete threadWrappers[i];
+//					delete[] threadWrappers;
+//#else
+//				}
+//				else
+//				{
+					for (int i = 0; i < complexes.size(); i++)
+						complexes.at(i)->Evolve();
+//				}
+
+			// Optionally add some log information.
 			}
 
 			std::vector<FitnessAssignedScores<double, T>> Population()
