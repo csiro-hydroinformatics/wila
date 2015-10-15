@@ -1366,9 +1366,7 @@ namespace mhcpp
 
 			IOptimizationResults<T> Evolve()
 			{
-				isCancelled = false;
-				terminationCondition.Reset();
-				ResetLog();
+				Reset();
 
 				this->populationInitializer = candidateFactory->Create();
 
@@ -1409,11 +1407,34 @@ namespace mhcpp
 				for (int i = 0; i < complexes.size(); i++)
 					complexes.at(i)->ComplexId = std::to_string(i);
 				// TODO:
-				// if (evaluator->IsCloneable())
-					//Parallel.ForEach(complexes, parallelOptions, c = > c.Evolve());
-				for (int i = 0; i < complexes.size(); i++)
-					complexes.at(i)->Evolve();
-				// Optionally add some log information.
+//				if (evaluator->IsCloneable())
+//				{
+//#ifdef _WIN32
+//					boost::threadpool::pool tp;
+//					int nThreads = std::max(1, (int)std::thread::hardware_concurrency());
+//					tp.size_controller().resize(nThreads);
+//
+//					for (int i = 0; i < ensembleSize; i++)
+//					{
+//						threadWrappers[i] = new ModelRunnerThreadWrapper();
+//						threadWrappers[i]->Initialise(mr, i, simulationLength, states, &playedTimeSeries, &recordedTimeSeries);
+//						boost::threadpool::schedule(tp, boost::bind(&ModelRunnerThreadWrapper::Run, threadWrappers[i]));
+//					}
+//
+//					tp.wait();
+//
+//					for (int i = 0; i < ensembleSize; i++)
+//						delete threadWrappers[i];
+//					delete[] threadWrappers;
+//#else
+//				}
+//				else
+//				{
+					for (int i = 0; i < complexes.size(); i++)
+						complexes.at(i)->Evolve();
+//				}
+
+			// Optionally add some log information.
 			}
 
 			std::vector<FitnessAssignedScores<double, T>> Population()
@@ -1423,6 +1444,14 @@ namespace mhcpp
 			}
 
 		private:
+
+			void Reset()
+			{
+				isCancelled = false;
+				terminationCondition.Reset();
+				ResetLog();
+				if (this->populationInitializer != nullptr) delete this->populationInitializer;
+			}
 
 			void Init(IObjectiveEvaluator<T>* evaluator,
 				const ICandidateFactorySeed<T>& candidateFactory,
@@ -1508,9 +1537,9 @@ namespace mhcpp
 
 				Complexes(Complexes&& src)
 				{
-					std::swap(this->sce, src.sce);
+					this->sce = std::move(src.sce);
+					src.sce = nullptr;
 					std::swap(this->complexes, src.complexes);
-					src.DisposeComplexes();
 				}
 
 				Complexes& operator=(const Complexes& src)
@@ -1529,9 +1558,9 @@ namespace mhcpp
 					if (&src == this){
 						return *this;
 					}
-					std::swap(this->sce, src.sce);
+					this->sce = std::move(src.sce);
+					src.sce = nullptr;
 					std::swap(this->complexes, src.complexes);
-					src.DisposeComplexes();
 					return *this;
 				}
 
@@ -1572,6 +1601,7 @@ namespace mhcpp
 							delete complexes[i];
 							complexes[i] = nullptr;
 						}
+					this->sce = nullptr;
 				}
 
 				Complex<T>* createComplex(std::vector<IObjectiveScores<T>> scores)
