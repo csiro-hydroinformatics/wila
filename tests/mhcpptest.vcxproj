@@ -72,7 +72,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(BoostPath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(BoostPath);$(BoostThreadPool)</IncludePath>
     <LibraryPath>$(LibraryPath);$(BoostLibPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup />

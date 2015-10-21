@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <atomic>
 #include <map>
 #include <random>
 #include <functional>
@@ -13,6 +14,7 @@ using namespace std;
 namespace mhcpp
 {
 	using namespace mhcpp::random;
+	using namespace mhcpp::utils;
 
 	class ISystemConfiguration
 	{
@@ -119,6 +121,14 @@ namespace mhcpp
 		virtual TSysConfig CreateRandomCandidate(const TSysConfig& point) = 0;
 		virtual TSysConfig CreateRandomCandidate(const std::vector<TSysConfig>& points) = 0;
 		virtual ICandidateFactory<TSysConfig>* CreateNew() = 0;
+		vector<TSysConfig> CreateRandomCandidates(size_t n)
+		{
+			vector<TSysConfig> v(n);
+			for (size_t i = 0; i < n; i++)
+				v[i] = CreateRandomCandidate();
+			return v;
+		}
+
 	};
 
 	template<typename TSysConfig>
@@ -127,6 +137,7 @@ namespace mhcpp
 	public:
 		virtual ICandidateFactory<TSysConfig>* Create() const = 0;
 		virtual ICandidateFactorySeed<TSysConfig>* Clone() const = 0;
+		virtual ~ICandidateFactorySeed() {/*Nothing*/};
 	};
 
 	/// <summary>
@@ -143,15 +154,22 @@ namespace mhcpp
 			this->objectives.push_back(ObjectiveValue(name, value, maximizable));
 		}
 
+		IObjectiveScores() {}
+
+		virtual ~IObjectiveScores() {}
+
 		IObjectiveScores(const IObjectiveScores<TSysConf>& src)
 		{
 			this->sys = src.sys;
 			this->objectives = src.objectives;
 		}
 
-		IObjectiveScores() {}
+		IObjectiveScores(IObjectiveScores<TSysConf>&& src)
+		{
+			std::swap(this->sys, src.sys);
+			std::swap(this->objectives, src.objectives);
+		}
 
-		virtual ~IObjectiveScores() {}
 
 		IObjectiveScores<TSysConf>& operator=(const IObjectiveScores<TSysConf> &src)
 		{
@@ -168,8 +186,8 @@ namespace mhcpp
 			if (&src == this){
 				return *this;
 			}
-			sys = std::move(src.sys);
-			objectives = std::move(src.objectives);
+			std::swap(this->sys, src.sys);
+			std::swap(this->objectives, src.objectives);
 			return *this;
 		}
 
@@ -528,6 +546,11 @@ namespace mhcpp
 			this->seed = 0;
 		}
 
+		~CandidateFactorySeed()
+		{
+			// Nothing
+		}
+
 		CandidateFactorySeed(const CandidateFactorySeed& src)
 		{
 			this->seed = src.seed;
@@ -685,7 +708,7 @@ namespace mhcpp
 	/// </summary>
 	/// <typeparam name="T">The type of fitness used to compare system configuration.</typeparam>
 	template<typename T, typename TSys>
-	class FitnessAssignedScores //: IComparable<FitnessAssignedScores<T>> where T : IComparable
+ 	class FitnessAssignedScores //: IComparable<FitnessAssignedScores<T>> where T : IComparable
 	{
 	public:
 		/// <summary>
@@ -702,6 +725,39 @@ namespace mhcpp
 		FitnessAssignedScores()
 		{
 			this->fitnessValue = T();
+		}
+
+		FitnessAssignedScores(const FitnessAssignedScores<T, TSys>& src)
+		{
+			this->scores = src.scores;
+			this->fitnessValue = src.fitnessValue;
+		}
+
+		FitnessAssignedScores(FitnessAssignedScores<T, TSys>&& src)
+		{
+			std::swap(this->scores, src.scores);
+			std::swap(this->fitnessValue, src.fitnessValue);
+		}
+
+
+		FitnessAssignedScores<T, TSys>& operator=(const FitnessAssignedScores<T, TSys> &src)
+		{
+			if (&src == this){
+				return *this;
+			}
+			this->scores = src.scores;
+			this->fitnessValue = src.fitnessValue;
+			return *this;
+		}
+
+		FitnessAssignedScores<T, TSys>& operator=(FitnessAssignedScores<T, TSys>&& src)
+		{
+			if (&src == this){
+				return *this;
+			}
+			std::swap(this->scores, src.scores);
+			std::swap(this->fitnessValue, src.fitnessValue);
+			return *this;
 		}
 
 		/// <summary>
@@ -728,7 +784,6 @@ namespace mhcpp
 			}
 			return result;
 		}
-
 
 		/// <summary>
 		/// Gets the fitness value that has been assigned to the candidate system configuration and its objective scores
@@ -891,6 +946,7 @@ namespace mhcpp
 
 	template<typename T>
 	class HyperCube : public IHyperCubeSetBounds < T > //where T : IComparable
+		, public InstanceCounter<HyperCube<T>>
 	{
 	public:
 		HyperCube() {}

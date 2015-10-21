@@ -8,10 +8,28 @@
 #include <iostream>
 #include <iterator>
 
+using namespace std;
+
 namespace mhcpp
 {
 	namespace utils
 	{
+
+		template <typename T>
+		class InstanceCounter
+		{
+		private:
+			static atomic<int> instances;
+		protected:
+			InstanceCounter() { instances++; }
+		public:
+			static int NumInstances() { return InstanceCounter<T>::instances; };
+			virtual ~InstanceCounter() { instances--; }
+		};
+
+		template <typename T>
+		atomic<int> InstanceCounter<T>::instances(0);
+
 		template<typename T>
 		bool AreSetEqual(const std::vector<T>& a, const std::vector<T>& b)
 		{

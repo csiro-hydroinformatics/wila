@@ -1,10 +1,17 @@
 #pragma once
 
 #include <algorithm>
+#include <concurrent_vector.h>
+
 #include "sce.h"
 #include "core.hpp"
 #include "evaluations.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+
+#include <thread>
+//#ifdef _WIN32
+#include <boost/threadpool.hpp>
+//#endif
 
 namespace mhcpp
 {
@@ -273,7 +280,7 @@ namespace mhcpp
 				}
 			};
 
-			vector<LogEntry> entries;
+			Concurrency::concurrent_vector<LogEntry> entries;
 
 			void Add(const LogEntry& entry)
 			{
@@ -633,9 +640,14 @@ namespace mhcpp
 			SubComplex(Complex<T>& complex)
 			{
 				this->complex = &complex;
-				Init(complex.scores, complex.evaluator, complex.q, complex.alpha, 
-					complex.rng, complex.candidateFactory, complex.fitnessAssignment, complex.logger, complex.tags, 
+				Init(complex.scores, complex.evaluator, complex.q, complex.alpha,
+					complex.rng, complex.candidateFactory, complex.fitnessAssignment, complex.logger, complex.tags,
 					complex.options, complex.ContractionRatio, complex.ReflectionRatio, complex.discreteGenerator);
+			}
+
+			~SubComplex()
+			{
+				// Nothing;
 			}
 
 			bool IsCancelledOrFinished()
@@ -1378,23 +1390,20 @@ namespace mhcpp
 					logTerminationConditionMet();
 					return packageResults(scores);
 				}
-				this->complexes = partition(scores);
-
-				//OnAdvanced( new ComplexEvolutionEvent( complexes ) );
+				CreateComplexes(scores);
 
 				CurrentShuffle = 1;
 				isFinished = terminationCondition.IsFinished();
 				if (isFinished) logTerminationConditionMet();
 				while (!isFinished && !isCancelled)
 				{
-					evolveComplexes();
+					EvolveComplexes();
 					string shuffleMsg = "Shuffling No " + std::to_string(CurrentShuffle);
-					auto shufflePoints = complexes.Aggregate();
+					std::vector<IObjectiveScores<T>> shufflePoints = AggregateComplexes();
 					loggerWrite(shufflePoints, createSimpleMsg(shuffleMsg, shuffleMsg));
-					this->PopulationAtShuffling = sortByFitness(shufflePoints);
+					SetPopulationToShuffle(shufflePoints);
 					loggerWrite(PopulationAtShuffling[0], createSimpleMsg("Best point in shuffle", shuffleMsg));
-					complexes = shuffle(complexes);
-
+					ShuffleComplexes();
 					CurrentShuffle++;
 					isFinished = terminationCondition.IsFinished();
 					if (isFinished) logTerminationConditionMet();
@@ -1402,39 +1411,14 @@ namespace mhcpp
 				return packageResults(complexes);
 			}
 
-			void evolveComplexes()
+			size_t PopulationSize()
 			{
-				for (int i = 0; i < complexes.size(); i++)
-					complexes.at(i)->ComplexId = std::to_string(i);
-				// TODO:
-//				if (evaluator->IsCloneable())
-//				{
-//#ifdef _WIN32
-//					boost::threadpool::pool tp;
-//					int nThreads = std::max(1, (int)std::thread::hardware_concurrency());
-//					tp.size_controller().resize(nThreads);
-//
-//					for (int i = 0; i < ensembleSize; i++)
-//					{
-//						threadWrappers[i] = new ModelRunnerThreadWrapper();
-//						threadWrappers[i]->Initialise(mr, i, simulationLength, states, &playedTimeSeries, &recordedTimeSeries);
-//						boost::threadpool::schedule(tp, boost::bind(&ModelRunnerThreadWrapper::Run, threadWrappers[i]));
-//					}
-//
-//					tp.wait();
-//
-//					for (int i = 0; i < ensembleSize; i++)
-//						delete threadWrappers[i];
-//					delete[] threadWrappers;
-//#else
-//				}
-//				else
-//				{
-					for (int i = 0; i < complexes.size(); i++)
-						complexes.at(i)->Evolve();
-//				}
+				return (this->p * this->m);
+			}
 
-			// Optionally add some log information.
+			size_t NumComplexes()
+			{
+				return (this->p);
 			}
 
 			std::vector<FitnessAssignedScores<double, T>> Population()
@@ -1443,7 +1427,13 @@ namespace mhcpp
 				return sortByFitness(complexes.Aggregate());
 			}
 
-		private:
+			void UseMultiThreading(bool use)
+			{
+				this->useMultiThreading = use;
+			}
+
+			// the next section has protected methods solely to facilitate unit testing.
+		protected:
 
 			void Reset()
 			{
@@ -1452,6 +1442,65 @@ namespace mhcpp
 				ResetLog();
 				if (this->populationInitializer != nullptr) delete this->populationInitializer;
 			}
+
+			std::vector<IObjectiveScores<T>> EvaluateScores(const std::vector<T>& population)
+			{
+				return Evaluations::EvaluateScores(this->evaluator, population);
+			}
+
+			void CreateComplexes(const std::vector<IObjectiveScores<T>>& scores)
+			{
+				this->complexes = partition(scores);
+			}
+
+			void EvolveComplexes()
+			{
+				for (int i = 0; i < complexes.size(); i++)
+					complexes.at(i)->ComplexId = std::to_string(i);
+				if (useMultiThreading && evaluator->IsCloneable())
+				{
+					boost::threadpool::pool tp;
+					int nThreads = this->GetMaxDegreeOfParallelism();
+					tp.size_controller().resize(nThreads);
+
+					for (int i = 0; i < complexes.size(); i++)
+					{
+						boost::threadpool::schedule(tp, boost::bind(&Complex<T>::Evolve, complexes.at(i)));
+					}
+					tp.wait();
+				}
+				else
+				{
+					for (int i = 0; i < complexes.size(); i++)
+						complexes.at(i)->Evolve();
+				}
+
+				// Optionally add some log information.
+			}
+
+			std::vector<IObjectiveScores<T>> AggregateComplexes()
+			{
+				return complexes.Aggregate();
+			}
+
+			void SetPopulationToShuffle(const std::vector<IObjectiveScores<T>>& shufflePoints)
+			{
+				this->PopulationAtShuffling = sortByFitness(shufflePoints);
+			}
+
+			void ShuffleComplexes()
+			{
+				complexes = shuffle(complexes);
+			}
+
+			std::vector<T> CreateCandidates(size_t n)
+			{
+				if (this->populationInitializer == nullptr)
+					this->populationInitializer = candidateFactory->Create();
+				return populationInitializer->CreateRandomCandidates(n);
+			}
+
+		private:
 
 			void Init(IObjectiveEvaluator<T>* evaluator,
 				const ICandidateFactorySeed<T>& candidateFactory,
@@ -1475,6 +1524,7 @@ namespace mhcpp
 				if (q > m)
 					throw std::logic_error("Q must be less than or equal to M");
 
+				SetMaxDegreeOfParallelismHardwareMinus(1);
 
 				this->evaluator = evaluator;
 				this->candidateFactory = candidateFactory.Clone();
@@ -1596,7 +1646,7 @@ namespace mhcpp
 				void DisposeComplexes()
 				{
 					for (size_t i = 0; i < complexes.size(); i++)
-						if(complexes[i]!= nullptr)
+						if (complexes[i] != nullptr)
 						{
 							delete complexes[i];
 							complexes[i] = nullptr;
@@ -1611,14 +1661,14 @@ namespace mhcpp
 
 					// TODO: reconsider how to handle parallel executions.
 					bool ownedPtr = (sce->evaluator->IsCloneable());
-					IObjectiveEvaluator<T>* evaluator = (ownedPtr ? sce->evaluator->Clone() : sce->evaluator );
+					IObjectiveEvaluator<T>* evaluator = (ownedPtr ? sce->evaluator->Clone() : sce->evaluator);
 
 					// We should always create a new candidate factory, 
 					// to have reproducible outputs whether multi-threaded or not
 					ICandidateFactory<T>* candidateFactory = sce->candidateFactory->Create();
 					bool ownedCandidateFactory = true;
 
-					return new Complex<T>(scores, evaluator, ownedPtr, sce->rng, 
+					return new Complex<T>(scores, evaluator, ownedPtr, sce->rng,
 						candidateFactory, ownedCandidateFactory,
 						sce->fitnessAssignment, sce->terminationCondition,
 						sce->logger, loggerTags, sce->q, sce->alpha, sce->beta, sce->trapezoidalPdfParam,
@@ -1628,8 +1678,7 @@ namespace mhcpp
 				std::vector<Complex<T>*> complexes;
 			};
 
-			Complexes complexes;
-
+		protected:
 			void MoveFrom(ShuffledComplexEvolution& src)
 			{
 				this->terminationCondition = std::move(src.terminationCondition);
@@ -1649,6 +1698,7 @@ namespace mhcpp
 				this->fitnessAssignment = std::move(src.fitnessAssignment);
 				this->rng = std::move(src.rng);
 				this->complexes = std::move(src.complexes);
+				this->maxDegreeOfParallelism = std::move(src.maxDegreeOfParallelism);
 
 				this->evaluator = std::move(src.evaluator);
 				this->populationInitializer = std::move(src.populationInitializer);
@@ -1667,6 +1717,7 @@ namespace mhcpp
 				//if (this->terminationCondition == src.nullptr)
 				//	this->terminationCondition = src.new MaxShuffleTerminationCondition();
 				this->terminationCondition.SetEvolutionEngine(this);
+				this->maxDegreeOfParallelism = src.maxDegreeOfParallelism;
 				this->p = src.p;
 				this->pmin = src.pmin;
 				this->m = src.m;
@@ -1685,6 +1736,10 @@ namespace mhcpp
 				this->logger = src.logger->CreateNew();
 			}
 
+		private:
+
+			bool useMultiThreading = true;
+			Complexes complexes;
 			std::map<string, string> logTags;
 			ICandidateFactorySeed<T>* candidateFactory = nullptr;
 			IObjectiveEvaluator<T>* evaluator = nullptr;
@@ -1925,12 +1980,22 @@ namespace mhcpp
 
 			int CurrentShuffle;
 
-			//	int MaxDegreeOfParallelism
-			//{
-			//	get{ return parallelOptions.MaxDegreeOfParallelism; }
-			//	set{ parallelOptions.MaxDegreeOfParallelism = value; }
-			//}
-			//ParallelOptions parallelOptions = new ParallelOptions();
+			int maxDegreeOfParallelism = 1;
+			void SetMaxDegreeOfParallelism(int maximum)
+			{
+				maxDegreeOfParallelism = std::max(1, maximum);
+			}
+
+			void SetMaxDegreeOfParallelismHardwareMinus(int freeCoresRemaining = 1)
+			{
+				int hardwareMax = std::thread::hardware_concurrency();
+				maxDegreeOfParallelism = std::max(1, hardwareMax - freeCoresRemaining);
+			}
+
+			int GetMaxDegreeOfParallelism()
+			{
+				return maxDegreeOfParallelism;
+			}
 
 			bool isCancelled = false;
 			//IComplex currentComplex;
@@ -2002,18 +2067,13 @@ namespace mhcpp
 
 			std::vector<IObjectiveScores<T>> evaluateScores(IObjectiveEvaluator<T>* evaluator, const std::vector<T>& population)
 			{
-				//return Evaluations::EvaluateScores(evaluator, population, () = > (this->isCancelled || terminationCondition->IsFinished()), parallelOptions);
 				return Evaluations::EvaluateScores(evaluator, population);
 			}
 
 			std::vector<T> initialisePopulation()
 			{
-				std::vector<T> result(p * m);
-				for (int i = 0; i < result.size(); i++)
-					result[i] = populationInitializer->CreateRandomCandidate();
-				return result;
+				return populationInitializer->CreateRandomCandidates(this->PopulationSize());
 			}
-
 
 			Complexes partition(const std::vector<FitnessAssignedScores<double, T>>& sortedScores)
 			{
@@ -2101,12 +2161,23 @@ namespace mhcpp
 		class MaxWalltimeCheck : public TerminationCheck<TSys, TEngine>
 		{
 		public:
+			MaxWalltimeCheck(double maxHours)
+			{
+				this->maxHours = maxHours;
+				Reset();
+			}
+
+			virtual ~MaxWalltimeCheck()
+			{
+			}
+
 			bool HasReachedMaxTime() const
 			{
 				if (maxHours <= 0)
 					return false;
 				boost::posix_time::ptime currentTime(boost::posix_time::second_clock::local_time());
-				double hoursElapsed = (currentTime - startTime).hours();
+				double secondsElapsed = (currentTime - startTime).total_seconds();
+				double hoursElapsed = secondsElapsed / 3600.0;
 				return (hoursElapsed >= maxHours);
 			}
 
@@ -2128,16 +2199,8 @@ namespace mhcpp
 				return result;
 			}
 
-			virtual ~MaxWalltimeCheck()
-			{
-			}
 
 		protected:
-			MaxWalltimeCheck(double maxHours)
-			{
-				this->maxHours = maxHours;
-				Reset();
-			}
 			double maxHours;
 			boost::posix_time::ptime startTime;
 		};

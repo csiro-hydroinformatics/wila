@@ -23,12 +23,14 @@ ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateCounterT
 	return terminationCondition;
 }
 
+ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateWallClockTermination(double seconds)
+{
+	MaxWalltimeCheck<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(seconds / 3600);
+	return ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition(c);
+}
+
 ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
 {
-	HyperCube<double> hc;
-	hc.Define("a", 1, 2, 1.5);
-	hc.Define("b", 3, 4, 3.3);
-
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
 	// TODO: check above
 	sceParams.P = 5;
@@ -36,15 +38,29 @@ ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double
 
 	goal.Define("a", 1, 2, 1);
 	goal.Define("b", 3, 4, 3);
+	HyperCube<double> hc = goal;
 	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
-	ICandidateFactory<HyperCube < double > >* populationInitializer = new UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory<>(), hc);
 	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
 
 	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
 	return opt;
 }
 
+ShuffledComplexEvolution<HyperCube<double>>* CreateQuadraticGoalPtr(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
+{
+	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
+	// TODO: check above
+	sceParams.P = 5;
+	sceParams.Pmin = 3;
 
+	goal.Define("a", 1, 2, 1);
+	goal.Define("b", 3, 4, 3);
+	HyperCube<double> hc = goal;
+	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
+	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
+
+	return new ShuffledComplexEvolution<HyperCube<double>>(evaluator, seeding, terminationCondition, sceParams);
+}
 
 SCENARIO("Basic hypercubes", "[sysconfig]") {
 
@@ -277,17 +293,21 @@ SCENARIO("URS RNG basics", "[rng]") {
 }
 
 SCENARIO("Complex for SCE, single objective", "[optimizer]") {
+
+
 	using T = HyperCube < double > ;
+	int hcStart = T::NumInstances();
 	int m = 20;
 	int q = 10, alpha = 2, beta = 3;
 	IRandomNumberGeneratorFactory<> rng(2);
 	auto unif = createTestUnifrand<T>(421);
 
 	std::vector < IObjectiveScores<T> > scores = createTestScores<T>(m, 123);
+	REQUIRE((hcStart + m + 1) == T::NumInstances());
 	IFitnessAssignment<double, T> fitnessAssignment;
 	//IHyperCubeOperations* hyperCubeOperations
 	//ILoggerMh* logger = nullptr;
-	HyperCube<double> goal = createTestHc(1.5, 3.4);
+	T goal = createTestHc(1.5, 3.4);
 	TopologicalDistance<T> evaluator(goal);
 
 	WHEN("looking for the point with the worst fitness value")
@@ -309,21 +329,28 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 	}
 	WHEN("Building and running a subcomplex") {
 		auto discreteRng = CreateTrapezoidalRng(scores.size(), rng.CreateNewStd());
-		SubComplex<T> scplx
+		int beforeSubCplx = T::NumInstances();
+		SubComplex<T>* scplx = new SubComplex<T>
 			(scores, &evaluator, q, alpha, rng, &unif, discreteRng,
 			fitnessAssignment);
 		THEN("The subcomplex evolution completes without exception")
 		{
 			// Calling Evolve works without exceptions.
-			scplx.Evolve();
-			AND_THEN("Retrieving the final population does return a vector of expected size = q")
+			int beforeEvolve = T::NumInstances();
+			REQUIRE(beforeEvolve == (beforeSubCplx + scores.size()));
+			scplx->Evolve();
+			int afterEvolve = T::NumInstances();
+			REQUIRE(beforeEvolve == afterEvolve);
+			AND_THEN("Retrieving the final population does return a vector of expected size = m")
 			{
 				std::vector<IObjectiveScores<T>> finalPop;
-				REQUIRE_NOTHROW(finalPop = scplx.WholePopulation());
+				REQUIRE_NOTHROW(finalPop = scplx->WholePopulation());
 				REQUIRE(finalPop.size() == m);
 				// TODO: further tests.
 			}
 		}
+		delete scplx;
+		REQUIRE(beforeSubCplx == T::NumInstances());
 	}
 	WHEN("Building and running a complex")
 	{
@@ -333,15 +360,20 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 
 		//Complex<T> cplx_noargs;
 
-		Complex<T> cplx
+		Complex<T>* cplx = new Complex<T>
 			(scores, &evaluator, false, rng, &unif, false,
 			fitnessAssignment, terminationCondition, nullptr, std::map<string, string>(), q, alpha, beta);
 		THEN("The complex evolution completes without exception")
 		{
-			REQUIRE_NOTHROW(cplx.Evolve());
+			REQUIRE_NOTHROW(cplx->Evolve());
 			// TODO: further tests.
+			delete cplx;
 		}
 	}
+	scores.clear();
+	// at this point only remaining parameterizers should be goal, unif and evaluator
+	REQUIRE((hcStart + 3) >= T::NumInstances());
+
 }
 
 SCENARIO("SCE basic port", "[optimizer]") {
@@ -365,11 +397,11 @@ SCENARIO("SCE basic port", "[optimizer]") {
 
 SCENARIO("Termination conditions", "[optimizer]") {
 
-	GIVEN("A marginal improvement termination condition")
+	// TODO (not thread safe now)
+	//GIVEN("A marginal improvement termination condition")
+	GIVEN("A runtime length termination condition")
 	{
-		MarginalImprovementTerminationCheck<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(1.0 / 600, 1e-5, 100);
-		ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition(c);
-
+		auto terminationCondition = CreateWallClockTermination(5.0);
 		HyperCube<double> goal;
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
 
@@ -381,4 +413,22 @@ SCENARIO("Termination conditions", "[optimizer]") {
 			REQUIRE(first.ObjectiveCount() == 1);
 		}
 	}
+}
+
+SCENARIO("Memory management", "[memory]") {
+	auto terminationCondition = CreateWallClockTermination(5.0);
+	using T = HyperCube < double > ;
+	T goal;
+	int hcBeforeCreation = T::NumInstances();
+	ShuffledComplexEvolution<T>* opt = CreateQuadraticGoalPtr(goal, terminationCondition);
+	int hcAfterCreation = T::NumInstances();
+	//REQUIRE(hcStart == hcEnd);
+	int hcBeforeEvolve = T::NumInstances();
+	IOptimizationResults<T> results = opt->Evolve();
+	int hcAfterEvolve = T::NumInstances();
+	results = IOptimizationResults<T>();
+	int hcAfterDeleteResults = T::NumInstances();
+	delete opt;
+	int hcAfterDeleteOpt = T::NumInstances();
+	REQUIRE(hcAfterDeleteOpt == hcBeforeCreation);
 }
