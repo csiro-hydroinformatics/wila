@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/core.hpp"
-#include "../include/sce.hpp"
+#include "core.hpp"
+#include "sce.hpp"
 
 using namespace mhcpp;
 

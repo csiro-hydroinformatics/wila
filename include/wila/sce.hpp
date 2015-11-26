@@ -1,7 +1,12 @@
 #pragma once
 
 #include <algorithm>
+
+#ifdef _WIN32
 #include <concurrent_vector.h>
+#else
+#include <tbb/concurrent_vector.h>
+#endif
 
 #include "sce.h"
 #include "core.hpp"
@@ -12,6 +17,13 @@
 //#ifdef _WIN32
 #include <boost/threadpool.hpp>
 //#endif
+
+			
+#ifdef _WIN32
+using namespace Concurrency;
+#else
+using namespace tbb;
+#endif
 
 namespace mhcpp
 {
@@ -37,255 +49,6 @@ namespace mhcpp
 			virtual std::map<string, vector<double>>GetNumericData() = 0;
 			virtual int GetLength() = 0;
 			virtual ILoggerMh<TSys>* CreateNew() = 0;
-		};
-
-
-
-		template<class TSys>
-		class SimpleLogger : public ILoggerMh < TSys >
-		{
-		public:
-			void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags)
-			{
-				Add(LogEntry(newPoint->GetValues(), ctags));
-			}
-			void Write(const string& message, const std::map<string, string>& ctags)
-			{
-				Add(LogEntry(message, ctags));
-			}
-			void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags)
-			{
-				// TODO: add fitness if/when use case required.
-				Write(scores.Scores(), tags);
-			}
-
-			void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& tags)
-			{
-				// TODO: add fitness if/when use case required.
-				Write(FitnessAssignedScores<double, TSys>::GetScores(scores), tags);
-			}
-
-			static vector<map<string, double>> flattenInfo(const std::vector<IObjectiveScores<TSys>>& scores)
-			{
-				vector<map<string, double>> r;
-				for (auto& s : scores)
-					r.push_back(flattenInfo(s));
-				return r;
-			}
-
-			static map<string, double> flattenInfo(const IObjectiveScores<TSys>& scores)
-			{
-				return LoggerMhHelper::MergeDictionaries<string, double>(
-					scores.GetObjectiveValues(),
-					scores.GetParameterValues()
-					);
-			}
-
-			void Write(const IObjectiveScores<TSys>& scores, const std::map<string, string>& tags)
-			{
-				Add(LogEntry(flattenInfo(scores), tags));
-			}
-
-			void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags)
-			{
-				vector<map<string, double>> logInfo = flattenInfo(scores);
-				Add(LogEntry(logInfo, tags));
-			}
-			void Reset()
-			{
-				entries.clear();
-			}
-
-			vector<string> NamesStringData()
-			{
-				std::set<string> keys;
-				for (auto& e : entries)
-					e.AddStringDataKeys(keys);
-				vector<string> res;
-				for (auto& k : keys)
-					res.push_back(k);
-				return res;
-			}
-
-			vector<string> NamesNumericData()
-			{
-				std::set<string> keys;
-				for (auto& e : entries)
-					e.AddNumericDataKeys(keys);
-				vector<string> res;
-				for (auto& k : keys)
-					res.push_back(k);
-				return res;
-			}
-
-			std::map<string, vector<string>> GetStringData()
-			{
-				vector<string> keys = NamesStringData();
-				int n = GetLength();
-				map<string, vector<string>> result;
-				for (auto& k : keys)
-					result[k] = vector<string>(n);
-				int offset = 0;
-				for (auto& e : entries)
-				{
-					int ne = e.GetLength();
-					e.FillTags(keys, result, offset);
-					offset += ne;
-				}
-				return result;
-			}
-
-			std::map<string, vector<double>> GetNumericData()
-			{
-				vector<string> keys = NamesNumericData();
-				int n = GetLength();
-				map<string, vector<double>> result;
-				for (auto& k : keys)
-					result[k] = vector<double>(n);
-				int offset = 0;
-				for (auto& e : entries)
-				{
-					int ne = e.GetLength();
-					e.FillNumerics(keys, result, offset);
-					offset += ne;
-				}
-				return result;
-			}
-
-			int GetLength()
-			{
-				int result = 0;
-				for (auto& e : entries)
-					result += e.GetLength();
-				return result;
-			}
-
-			ILoggerMh<TSys>* CreateNew()
-			{
-				return new SimpleLogger();
-			}
-
-		private:
-			class LogEntry
-			{
-			public:
-				LogEntry(const string& message, const map<string, string>& tags)
-				{
-					map<string, string> m;
-					m["Message"] = message;
-					SetTags(LoggerMhHelper::MergeDictionaries<>(m, tags));
-				}
-
-
-				LogEntry(const map<string, double>& data, const map<string, string>& tags)
-				{
-					this->data.push_back(data);
-					SetTags(tags);
-				}
-
-				LogEntry(const vector<map<string, double>>& data, const map<string, string>& tags)
-				{
-					for (auto& d : data)
-						this->data.push_back(d);
-					SetTags(tags);
-				}
-
-				LogEntry(const LogEntry& src)
-				{
-					this->data = src.data;
-					this->tags = src.tags;
-				}
-
-				LogEntry(LogEntry&& src)
-				{
-					std::swap(this->data, src.data);
-					std::swap(this->tags, src.tags);
-				}
-
-				LogEntry& operator=(const LogEntry& src)
-				{
-					if (&src == this){
-						return *this;
-					}
-					this->data = src.data;
-					this->tags = src.tags;
-					return *this;
-				}
-
-				LogEntry& operator=(LogEntry&& src)
-				{
-					if (&src == this){
-						return *this;
-					}
-					std::swap(this->data, src.data);
-					std::swap(this->tags, src.tags);
-					return *this;
-				}
-
-				void AddStringDataKeys(std::set<string>& keys)
-				{
-					for (auto& tag : this->tags)
-						keys.emplace(tag.first);
-				}
-
-				void AddNumericDataKeys(std::set<string>& keys)
-				{
-					if (data.size() == 0)
-						return;
-					// HACK, but OK if we are requiring uniform num data keys
-					for (auto& kvp : data[0])
-						keys.emplace(kvp.first);
-				}
-
-				void FillTags(const vector<string>& keys, map<string, vector<string>> & toFill, int offset)
-				{
-					int n = GetLength();
-					for (auto& k : keys)
-					{
-						if (LoggerMhHelper::HasKey(tags, k))
-						{
-							vector<string>& v = toFill[k];
-							for (size_t i = 0; i < n; i++)
-								v[i + offset] = tags[k];
-						}
-					}
-				}
-
-				void FillNumerics(const vector<string>& keys, map<string, vector<double>> & toFill, int offset)
-				{
-					for (auto& k : keys)
-					{
-						vector<double>& v = toFill[k];
-						for (size_t i = 0; i < data.size(); i++)
-						{
-							if (!LoggerMhHelper::HasKey(data[i], k))
-								throw std::logic_error("Simple log: keys for numeric data must always exist: " + k);
-							v[i + offset] = data[i][k];
-						}
-					}
-				}
-
-				int GetLength() { return data.size(); }
-
-			private:
-				vector<map<string, double>> data;
-				map<string, string> tags;
-				void SetTags(const map<string, string>& tags)
-				{
-#ifdef _DEBUG
-					if (LoggerMhHelper::HasKey(tags, ""))
-						throw std::logic_error("tags keys cannot be empty strings");
-#endif
-					this->tags = tags;
-				}
-			};
-
-			Concurrency::concurrent_vector<LogEntry> entries;
-
-			void Add(const LogEntry& entry)
-			{
-				this->entries.push_back(entry);
-			}
 		};
 
 		class LoggerMhHelper
@@ -600,6 +363,255 @@ namespace mhcpp
 			//}
 
 		};
+
+
+		template<class TSys>
+		class SimpleLogger : public ILoggerMh < TSys >
+		{
+		public:
+			void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags)
+			{
+				Add(LogEntry(newPoint->GetValues(), ctags));
+			}
+			void Write(const string& message, const std::map<string, string>& ctags)
+			{
+				Add(LogEntry(message, ctags));
+			}
+			void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags)
+			{
+				// TODO: add fitness if/when use case required.
+				Write(scores.Scores(), tags);
+			}
+
+			void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& tags)
+			{
+				// TODO: add fitness if/when use case required.
+				Write(FitnessAssignedScores<double, TSys>::GetScores(scores), tags);
+			}
+
+			static vector<map<string, double>> flattenInfo(const std::vector<IObjectiveScores<TSys>>& scores)
+			{
+				vector<map<string, double>> r;
+				for (auto& s : scores)
+					r.push_back(flattenInfo(s));
+				return r;
+			}
+
+			static map<string, double> flattenInfo(const IObjectiveScores<TSys>& scores)
+			{
+				return LoggerMhHelper::MergeDictionaries<string, double>(
+					scores.GetObjectiveValues(),
+					scores.GetParameterValues()
+					);
+			}
+
+			void Write(const IObjectiveScores<TSys>& scores, const std::map<string, string>& tags)
+			{
+				Add(LogEntry(flattenInfo(scores), tags));
+			}
+
+			void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags)
+			{
+				vector<map<string, double>> logInfo = flattenInfo(scores);
+				Add(LogEntry(logInfo, tags));
+			}
+			void Reset()
+			{
+				entries.clear();
+			}
+
+			vector<string> NamesStringData()
+			{
+				std::set<string> keys;
+				for (auto& e : entries)
+					e.AddStringDataKeys(keys);
+				vector<string> res;
+				for (auto& k : keys)
+					res.push_back(k);
+				return res;
+			}
+
+			vector<string> NamesNumericData()
+			{
+				std::set<string> keys;
+				for (auto& e : entries)
+					e.AddNumericDataKeys(keys);
+				vector<string> res;
+				for (auto& k : keys)
+					res.push_back(k);
+				return res;
+			}
+
+			std::map<string, vector<string>> GetStringData()
+			{
+				vector<string> keys = NamesStringData();
+				int n = GetLength();
+				map<string, vector<string>> result;
+				for (auto& k : keys)
+					result[k] = vector<string>(n);
+				int offset = 0;
+				for (auto& e : entries)
+				{
+					int ne = e.GetLength();
+					e.FillTags(keys, result, offset);
+					offset += ne;
+				}
+				return result;
+			}
+
+			std::map<string, vector<double>> GetNumericData()
+			{
+				vector<string> keys = NamesNumericData();
+				int n = GetLength();
+				map<string, vector<double>> result;
+				for (auto& k : keys)
+					result[k] = vector<double>(n);
+				int offset = 0;
+				for (auto& e : entries)
+				{
+					int ne = e.GetLength();
+					e.FillNumerics(keys, result, offset);
+					offset += ne;
+				}
+				return result;
+			}
+
+			int GetLength()
+			{
+				int result = 0;
+				for (auto& e : entries)
+					result += e.GetLength();
+				return result;
+			}
+
+			ILoggerMh<TSys>* CreateNew()
+			{
+				return new SimpleLogger();
+			}
+
+		private:
+			class LogEntry
+			{
+			public:
+				LogEntry(const string& message, const map<string, string>& tags)
+				{
+					map<string, string> m;
+					m["Message"] = message;
+					SetTags(LoggerMhHelper::MergeDictionaries<>(m, tags));
+				}
+
+
+				LogEntry(const map<string, double>& data, const map<string, string>& tags)
+				{
+					this->data.push_back(data);
+					SetTags(tags);
+				}
+
+				LogEntry(const vector<map<string, double>>& data, const map<string, string>& tags)
+				{
+					for (auto& d : data)
+						this->data.push_back(d);
+					SetTags(tags);
+				}
+
+				LogEntry(const LogEntry& src)
+				{
+					this->data = src.data;
+					this->tags = src.tags;
+				}
+
+				LogEntry(LogEntry&& src)
+				{
+					std::swap(this->data, src.data);
+					std::swap(this->tags, src.tags);
+				}
+
+				LogEntry& operator=(const LogEntry& src)
+				{
+					if (&src == this){
+						return *this;
+					}
+					this->data = src.data;
+					this->tags = src.tags;
+					return *this;
+				}
+
+				LogEntry& operator=(LogEntry&& src)
+				{
+					if (&src == this){
+						return *this;
+					}
+					std::swap(this->data, src.data);
+					std::swap(this->tags, src.tags);
+					return *this;
+				}
+
+				void AddStringDataKeys(std::set<string>& keys)
+				{
+					for (auto& tag : this->tags)
+						keys.emplace(tag.first);
+				}
+
+				void AddNumericDataKeys(std::set<string>& keys)
+				{
+					if (data.size() == 0)
+						return;
+					// HACK, but OK if we are requiring uniform num data keys
+					for (auto& kvp : data[0])
+						keys.emplace(kvp.first);
+				}
+
+				void FillTags(const vector<string>& keys, map<string, vector<string>> & toFill, int offset)
+				{
+					int n = GetLength();
+					for (auto& k : keys)
+					{
+						if (LoggerMhHelper::HasKey(tags, k))
+						{
+							vector<string>& v = toFill[k];
+							for (size_t i = 0; i < n; i++)
+								v[i + offset] = tags[k];
+						}
+					}
+				}
+
+				void FillNumerics(const vector<string>& keys, map<string, vector<double>> & toFill, int offset)
+				{
+					for (auto& k : keys)
+					{
+						vector<double>& v = toFill[k];
+						for (size_t i = 0; i < data.size(); i++)
+						{
+							if (!LoggerMhHelper::HasKey(data[i], k))
+								throw std::logic_error("Simple log: keys for numeric data must always exist: " + k);
+							v[i + offset] = data[i][k];
+						}
+					}
+				}
+
+				int GetLength() { return data.size(); }
+
+			private:
+				vector<map<string, double>> data;
+				map<string, string> tags;
+				void SetTags(const map<string, string>& tags)
+				{
+#ifdef _DEBUG
+					if (LoggerMhHelper::HasKey(tags, ""))
+						throw std::logic_error("tags keys cannot be empty strings");
+#endif
+					this->tags = tags;
+				}
+			};
+
+			concurrent_vector<LogEntry> entries;
+
+			void Add(const LogEntry& entry)
+			{
+				this->entries.push_back(entry);
+			}
+		};
+
 	}
 }
 
@@ -1242,7 +1254,7 @@ namespace mhcpp
 
 		public:
 
-			typedef typename ITerminationCondition<T, ShuffledComplexEvolution<T>> TerminationCondition;
+			typedef ITerminationCondition<T, ShuffledComplexEvolution<T>> TerminationCondition;
 
 			ShuffledComplexEvolution(const IObjectiveEvaluator<T>& evaluator,
 				const ICandidateFactorySeed<T>& candidateFactory,
@@ -1382,7 +1394,7 @@ namespace mhcpp
 
 				this->populationInitializer = candidateFactory->Create();
 
-				std::vector<IObjectiveScores<T>> scores = evaluateScores(evaluator, initialisePopulation());
+				std::vector<IObjectiveScores<T>> scores = EvaluateScores(initialisePopulation());
 				loggerWrite(scores, createSimpleMsg("Initial Population", "Initial Population"));
 				auto isFinished = terminationCondition.IsFinished();
 				if (isFinished)
@@ -1445,7 +1457,7 @@ namespace mhcpp
 
 			std::vector<IObjectiveScores<T>> EvaluateScores(const std::vector<T>& population)
 			{
-				return Evaluations::EvaluateScores(this->evaluator, population);
+				return Evaluations::EvaluateScores(this->evaluator, population, this->useMultiThreading, GetMaxDegreeOfParallelism());
 			}
 
 			void CreateComplexes(const std::vector<IObjectiveScores<T>>& scores)
@@ -2065,10 +2077,10 @@ namespace mhcpp
 				return newComplexes;
 			}
 
-			std::vector<IObjectiveScores<T>> evaluateScores(IObjectiveEvaluator<T>* evaluator, const std::vector<T>& population)
-			{
-				return Evaluations::EvaluateScores(evaluator, population);
-			}
+			//std::vector<IObjectiveScores<T>> evaluateScores(IObjectiveEvaluator<T>* evaluator, const std::vector<T>& population)
+			//{
+			//	return Evaluations::EvaluateScores(evaluator, population);
+			//}
 
 			std::vector<T> initialisePopulation()
 			{
@@ -2191,7 +2203,7 @@ namespace mhcpp
 				return HasReachedMaxTime();
 			}
 
-			virtual TerminationCheck* Clone() const
+			virtual TerminationCheck<TSys, TEngine>* Clone() const
 			{
 				// TOCHECK: is this the behavior we want (think parallel operations)
 				auto result = new MaxWalltimeCheck(maxHours);
@@ -2211,7 +2223,7 @@ namespace mhcpp
 		{
 		public:
 			MarginalImprovementTerminationCheck(double maxHours, double tolerance, int cutoffNoImprovement) :
-				MaxWalltimeCheck(maxHours)
+				MaxWalltimeCheck<TSys, TEngine>(maxHours)
 			{
 				this->tolerance = tolerance;
 				this->maxConverge = cutoffNoImprovement;
@@ -2219,7 +2231,7 @@ namespace mhcpp
 
 			virtual void Reset()
 			{
-				MaxWalltimeCheck::Reset();
+				MaxWalltimeCheck<TSys, TEngine>::Reset();
 				converge = 0;
 			}
 
@@ -2228,10 +2240,10 @@ namespace mhcpp
 				return isFinished(engine);
 			}
 
-			virtual TerminationCheck* Clone() const
+			virtual TerminationCheck<TSys, TEngine>* Clone() const
 			{
 				// TOCHECK: is this the behavior we want (think parallel operations)
-				auto result = new MarginalImprovementTerminationCheck(maxHours, tolerance, maxConverge);
+				auto result = new MarginalImprovementTerminationCheck(this->maxHours, tolerance, maxConverge);
 				result->Reset();
 				return result;
 			}
@@ -2243,13 +2255,13 @@ namespace mhcpp
 				IPopulation<double, TSys>* sce = dynamic_cast<IPopulation<double, TSys>*>(engine);
 				if (sce == nullptr) throw std::invalid_argument(string("Argument 'engine' is not a ") + typeid(IPopulation<double, TSys>).name());
 
-				if (HasReachedMaxTime())
+				if (MaxWalltimeCheck<TSys, TEngine>::HasReachedMaxTime())
 					return true;
 				auto currentPopulation = sce->Population();
 				if (currentPopulation.size() == 0)
 					return false;
 				double currentBest = currentPopulation[0].FitnessValue();
-				if (isnan(oldBest))
+				if (std::isnan(oldBest))
 				{
 					oldBest = currentBest;
 					return false;

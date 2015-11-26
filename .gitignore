@@ -32,3 +32,6 @@ Debug/*
 Release/*
 tests/Debug/*
 tests/Release/*
+*.tlog
+*.sdf
+*.idb

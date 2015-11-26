@@ -612,7 +612,7 @@ namespace mhcpp
 			return (counter >= maxChecks);
 		}
 
-		TerminationCheck* Clone() const
+		TerminationCheck<TSys, TEngine>* Clone() const
 		{
 			// TOCHECK: is this the behavior we want (think parallel operations)
 			return new CounterTestFinished(maxChecks);
@@ -626,7 +626,7 @@ namespace mhcpp
 		class AlwaysFinished : public TerminationCheck < T, TEngine >
 		{
 			bool IsFinished(TEngine* engine) { return true; }
-			TerminationCheck* Clone() const { return new AlwaysFinished(); };
+			TerminationCheck < T, TEngine >* Clone() const { return new AlwaysFinished(); };
 		};
 	public:
 		ITerminationCondition()

@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 #include <algorithm>
-#include "sce.h"
+#include "../include/wila/sce.h"
 
 namespace mhcpp
 {
