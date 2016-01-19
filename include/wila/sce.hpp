@@ -1,23 +1,31 @@
 #pragma once
 
 #include <algorithm>
+#include <thread>
 
-#ifdef _WIN32
-#include <concurrent_vector.h>
-#else
-#include <tbb/concurrent_vector.h>
-#endif
 
 #include "sce.h"
 #include "core.hpp"
 #include "evaluations.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
-#include <thread>
-//#ifdef _WIN32
-#include <boost/threadpool.hpp>
-//#endif
 
+// On Pearcey, TIME_UTC is not defined with these include, and the threadpool fails to compile with:
+// error: ‘TIME_UTC’ was not declared in this scope
+//           xtime_get(&xt, TIME_UTC);
+#ifndef _WIN32
+#ifndef TIME_UTC
+#define TIME_UTC 1
+#endif
+#endif
+
+#include "boost/threadpool.hpp"
+
+#ifdef _WIN32
+#include <concurrent_vector.h>
+#else
+#include <tbb/concurrent_vector.h>
+#endif
 			
 #ifdef _WIN32
 using namespace Concurrency;
@@ -1139,7 +1147,7 @@ namespace mhcpp
 			bool ownCandidateFactory = true;
 			bool IsCancelled = false;
 
-			ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition;
+			ITerminationCondition<T, ShuffledComplexEvolution<T>>* terminationCondition;
 
 		protected:
 
@@ -1178,8 +1186,7 @@ namespace mhcpp
 				ILoggerMh<T>* logger = nullptr, const std::map<string, string>& tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) 
 				:
-				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF)),
-				terminationCondition(terminationCondition)
+				discreteGenerator(CreateTrapezoidalRng(scores.size(), rng.CreateNewStd(), factorTrapezoidalPDF))
 			{
 				Init(scores, evaluator, ownEvaluator, q, alpha, beta, factorTrapezoidalPDF, options, reflectionRatio, contractionRatio);
 				this->fitnessAssignment = fitnessAssignment;
@@ -1188,6 +1195,7 @@ namespace mhcpp
 				this->logger = logger;
 				this->tags = tags;
 				this->rng = rng;
+				this->terminationCondition = &terminationCondition;
 			}
 
 			virtual ~Complex()
@@ -1208,7 +1216,9 @@ namespace mhcpp
 
 			bool IsFinished()
 			{
-				return terminationCondition.IsFinished();
+				if (!terminationCondition->IsThreadSafe())
+					return false;
+				return terminationCondition->IsFinished();
 			}
 
 			bool IsCancelledOrFinished()
@@ -2203,6 +2213,8 @@ namespace mhcpp
 				return HasReachedMaxTime();
 			}
 
+			virtual bool IsThreadSafe() { return true; };
+
 			virtual TerminationCheck<TSys, TEngine>* Clone() const
 			{
 				// TOCHECK: is this the behavior we want (think parallel operations)
@@ -2238,6 +2250,14 @@ namespace mhcpp
 			virtual bool IsFinished(TEngine* engine)
 			{
 				return isFinished(engine);
+			}
+
+			virtual bool IsThreadSafe()
+			{
+				// When complexes check the SCE population, there are some race conditions, perhaps due to 
+				// use of move semantics in some classes. Too tricky to handle, and this check 
+				// should only be used in thread safe contexts.
+				return false;
 			}
 
 			virtual TerminationCheck<TSys, TEngine>* Clone() const

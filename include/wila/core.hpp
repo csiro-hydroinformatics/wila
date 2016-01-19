@@ -588,6 +588,7 @@ namespace mhcpp
 	public:
 		virtual void Reset() { }
 		virtual bool IsFinished(TEngine* engine) = 0;
+		virtual bool IsThreadSafe() = 0;
 		virtual TerminationCheck* Clone() const = 0;
 		virtual ~TerminationCheck()
 		{
@@ -612,6 +613,8 @@ namespace mhcpp
 			return (counter >= maxChecks);
 		}
 
+		bool IsThreadSafe() { return true; }; // TODO: probably not, unless counter is made atomic...
+
 		TerminationCheck<TSys, TEngine>* Clone() const
 		{
 			// TOCHECK: is this the behavior we want (think parallel operations)
@@ -626,6 +629,7 @@ namespace mhcpp
 		class AlwaysFinished : public TerminationCheck < T, TEngine >
 		{
 			bool IsFinished(TEngine* engine) { return true; }
+			bool IsThreadSafe() { return true; };
 			TerminationCheck < T, TEngine >* Clone() const { return new AlwaysFinished(); };
 		};
 	public:
@@ -693,6 +697,12 @@ namespace mhcpp
 				throw std::logic_error("The optimization engine is not yet set - cannot check for termination criterion");
 			return Check->IsFinished(engine);
 		}
+
+		bool IsThreadSafe()
+		{
+			return Check->IsThreadSafe();
+ 		}
+
 		void Reset()
 		{
 			Check->Reset();

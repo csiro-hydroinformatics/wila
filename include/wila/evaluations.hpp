@@ -1,8 +1,21 @@
 #pragma once
 
 #include <vector>
+#include <boost/threadpool.hpp>
 #include "core.hpp"
 
+#include <thread>
+
+// On Pearcey, TIME_UTC is not defined with these include, and the threadpool fails to compile with:
+// error: ‘TIME_UTC’ was not declared in this scope
+//           xtime_get(&xt, TIME_UTC);
+#ifndef _WIN32
+#ifndef TIME_UTC
+#define TIME_UTC 1
+#endif
+#endif
+
+#include "boost/threadpool.hpp"
 
 namespace mhcpp
 {

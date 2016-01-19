@@ -1,8 +1,6 @@
-#pragma once
-
 #include <stdexcept>
 #include <algorithm>
-#include "../include/wila/sce.h"
+#include "wila/sce.h"
 
 namespace mhcpp
 {

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core.hpp"
-#include "sce.hpp"
+#include "wila/core.hpp"
+#include "wila/sce.hpp"
 
 using namespace mhcpp;
 

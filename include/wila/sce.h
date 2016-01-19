@@ -14,11 +14,11 @@ typedef struct _SceParameters
 	/// <summary>
 	/// Number of complexes
 	/// </summary>
-	int P = 5;
+	int P;
 	/// <summary>
 	/// Minimum number of complexes (populations of points)
 	/// </summary>
-	int Pmin = 3;
+	int Pmin;
 	/// <summary>
 	/// Number of points per complex
 	/// </summary>

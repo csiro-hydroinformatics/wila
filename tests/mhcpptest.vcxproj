@@ -72,7 +72,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(BoostPath);$(BoostThreadPool)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(BoostPath);$(BoostThreadPool);../include</IncludePath>
     <LibraryPath>$(LibraryPath);$(BoostLibPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup />
@@ -129,9 +129,9 @@
     <ClInclude Include="common.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\include\sce.cpp" />
+    <ClCompile Include="..\src\sce.cpp" />
     <ClCompile Include="common.cpp" />
-    <ClCompile Include="hypercube.cpp" />
+    <!-- <ClCompile Include="..\src\hypercube.cpp" /> -->
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
