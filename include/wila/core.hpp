@@ -275,8 +275,9 @@ namespace mhcpp
 		static bool BetterThan(const IObjectiveScores<TSysConf>& elem1, const IObjectiveScores<TSysConf>& elem2, int index)
 		{
 			bool lessThan = (elem1.Value(index) < elem2.Value(index));
+			bool moreThan = (elem1.Value(index) > elem2.Value(index));
 			if(elem1.Maximizable(index))
-				return !lessThan;
+				return moreThan;
 			return lessThan;
 		}
 
@@ -868,12 +869,13 @@ namespace mhcpp
 		std::vector<FitnessAssignedScores<TVal, TSys>> AssignFitness(const std::vector<IObjectiveScores<TSys>>& scores)
 		{
 			std::vector<FitnessAssignedScores<TVal, TSys>> result;
-			for (IObjectiveScores<TSys> s : scores)
+			// for (auto& s : scores) // <== causes a debug assertion failure with VS - "vector iterator not incrementable"
+			for (int i = 0; i < scores.size(); i++)
 			{
-				if (s.ObjectiveCount() > 1)
-					throw std::logic_error("Fitness score for multiple objective is not yet supported.");
-				TVal scoreVal = s.Value(0);
-				result.push_back(FitnessAssignedScores<TVal, TSys>(s, s.Maximizable(0) ? -scoreVal : scoreVal));
+				if (scores[i].ObjectiveCount() != 1)
+					throw std::logic_error("Fitness score currently must be derived exactly from one objective");
+				TVal scoreVal = scores[i].Value(0);
+				result.push_back(FitnessAssignedScores<TVal, TSys>(scores[i], scores[i].Maximizable(0) ? -scoreVal : scoreVal));
 			}
 			return result;
 		}
@@ -960,6 +962,8 @@ namespace mhcpp
 	{
 	public:
 		HyperCube() {}
+
+		virtual ~HyperCube() {}
 
 		HyperCube(const HyperCube& src)
 		{

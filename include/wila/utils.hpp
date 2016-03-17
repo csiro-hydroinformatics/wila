@@ -1,12 +1,37 @@
 #pragma once
 
 #include <string>
-#include <set>
 #include <vector>
-#include <map>
-#include <algorithm>
+#include <exception>
+#include <mutex>
+#include <thread>
 #include <iostream>
-#include <iterator>
+#include <boost/lexical_cast.hpp>
+
+
+// On Pearcey, TIME_UTC is not defined with these include, and the threadpool fails to compile with:
+// error: TIME_UTC was not declared in this scope
+//           xtime_get(&xt, TIME_UTC);
+#ifndef _WIN32
+#ifndef TIME_UTC
+#define TIME_UTC 1
+#endif
+#endif
+
+#include "boost/threadpool.hpp"
+
+#ifdef _WIN32
+#include <concurrent_vector.h>
+#else
+#include <tbb/concurrent_vector.h>
+#endif
+
+#ifdef _WIN32
+using namespace Concurrency;
+#else
+using namespace tbb;
+#endif
+
 
 using namespace std;
 
@@ -14,12 +39,91 @@ namespace mhcpp
 {
 	namespace utils
 	{
+		template <typename T = std::function<void()>>
+		class CrossThreadExceptions
+		{
+		public:
+			CrossThreadExceptions(const std::vector<T>& tasks, const std::vector<std::function<void()>>& cleanup)
+			{
+				this->tasks = tasks;
+				this->cleanup = cleanup;
+			}
+			CrossThreadExceptions(const std::vector<T>& tasks)
+			{
+				this->tasks = tasks;
+			}
+			~CrossThreadExceptions()
+			{
+			}
+
+			void TryExecute(T& f)
+			{
+				try {
+					f();
+				}
+				catch (const std::exception& e) {
+					threadExceptions.push_back(current_exception());
+				}
+			}
+
+			void ExecuteTasks(int nThreads)
+			{
+				threadExceptions.clear();
+				boost::threadpool::pool tp(1);
+				if (!tp.size_controller().resize(nThreads)) {
+					// this can be false on Linux. But, this is unclear how to prevent this. Since the size_controller 
+				  // itself also catches a thread exception and 'just' return false, let's see if we can ignore it.
+					throw std::runtime_error(string("Unable to set size of threadpool. Caller requested nThreads=") + boost::lexical_cast<string>(nThreads));
+				}
+
+				for (int i = 0; i < tasks.size(); i++)
+				{
+					T tryExecuteFunc =
+						[=]()
+					{
+						this->TryExecute(tasks[i]);
+					};
+					boost::threadpool::schedule(tp, tryExecuteFunc);
+				}
+				tp.wait();
+
+				Cleanup();
+
+				if (threadExceptions.size() > 0)
+				{
+					rethrow_exception(threadExceptions[0]);
+				}
+			}
+
+		private:
+			void Cleanup()
+			{
+				try {
+					for (int i = 0; i < cleanup.size(); i++)
+					{
+						cleanup[i]();
+					}
+				}
+				catch (const std::exception& e) {
+					if (threadExceptions.empty())
+						threadExceptions.push_back(current_exception());
+					else
+						threadExceptions[0] = current_exception();
+
+				}
+			}
+			concurrent_vector<exception_ptr> threadExceptions;
+			std::vector<T> tasks;
+			std::vector<std::function<void()>> cleanup;
+
+		};
+
 
 		template <typename T>
 		class InstanceCounter
 		{
 		private:
-			static atomic<int> instances;
+			static std::atomic<int> instances;
 		protected:
 			InstanceCounter() { instances++; }
 		public:
@@ -28,7 +132,7 @@ namespace mhcpp
 		};
 
 		template <typename T>
-		atomic<int> InstanceCounter<T>::instances(0);
+		std::atomic<int> InstanceCounter<T>::instances(0);
 
 		template<typename T>
 		bool AreSetEqual(const std::vector<T>& a, const std::vector<T>& b)

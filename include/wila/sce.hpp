@@ -2,22 +2,11 @@
 
 #include <algorithm>
 #include <thread>
-
-
+#include <mutex>
 #include "sce.h"
 #include "core.hpp"
 #include "evaluations.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
-
-
-// On Pearcey, TIME_UTC is not defined with these include, and the threadpool fails to compile with:
-// error: ‘TIME_UTC’ was not declared in this scope
-//           xtime_get(&xt, TIME_UTC);
-#ifndef _WIN32
-#ifndef TIME_UTC
-#define TIME_UTC 1
-#endif
-#endif
 
 #include "boost/threadpool.hpp"
 
@@ -679,7 +668,7 @@ namespace mhcpp
 
 			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
-				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag({ tuples }), this->tags);
+				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag(tuples), this->tags);
 			}
 
 			void Evolve()
@@ -1120,7 +1109,7 @@ namespace mhcpp
 		{
 			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
-				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag({ tuples }), this->tags);
+				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag(tuples), this->tags);
 			}
 
 			friend SubComplex<T>::SubComplex(Complex&);
@@ -1257,7 +1246,7 @@ namespace mhcpp
 		template<typename T>
 		class ShuffledComplexEvolution
 			: public IEvolutionEngine<T>,
-			  public IPopulation<double, T>
+			public IPopulation<double, T>
 			//where T : ICloneableSystemConfiguration
 		{
 			// needed? friend Complexes<T>(SCE&);
@@ -1335,7 +1324,7 @@ namespace mhcpp
 
 			ShuffledComplexEvolution& operator=(ShuffledComplexEvolution&& src)
 			{
-				if (&src == this){
+				if (&src == this) {
 					return *this;
 				}
 				MoveFrom(src);
@@ -1344,7 +1333,7 @@ namespace mhcpp
 
 			ShuffledComplexEvolution& operator=(const ShuffledComplexEvolution& src)
 			{
-				if (&src == this){
+				if (&src == this) {
 					return *this;
 				}
 				throw std::logic_error("copy assignment for ShuffledComplexEvolution not yet supported");
@@ -1481,15 +1470,22 @@ namespace mhcpp
 					complexes.at(i)->ComplexId = std::to_string(i);
 				if (useMultiThreading && evaluator->IsCloneable())
 				{
-					boost::threadpool::pool tp;
 					int nThreads = this->GetMaxDegreeOfParallelism();
-					tp.size_controller().resize(nThreads);
 
+					vector<std::function<void()>> tasks;
 					for (int i = 0; i < complexes.size(); i++)
 					{
-						boost::threadpool::schedule(tp, boost::bind(&Complex<T>::Evolve, complexes.at(i)));
+						auto cplx = complexes.at(i);
+						std::function<void()> evolveFunc =
+						[=]()
+						{
+							cplx->Evolve();
+						};
+						tasks.push_back(evolveFunc);
 					}
-					tp.wait();
+
+					CrossThreadExceptions<std::function<void()>> cte(tasks);
+					cte.ExecuteTasks(nThreads);
 				}
 				else
 				{
@@ -1649,7 +1645,7 @@ namespace mhcpp
 				std::vector<IObjectiveScores<T>> Aggregate()
 				{
 					std::vector<IObjectiveScores<T>> result;
-					for (auto c : complexes)
+					for (auto& c : complexes)
 					{
 						auto scores = c->GetObjectiveScores();
 #ifdef _DEBUG

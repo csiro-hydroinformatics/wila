@@ -46,6 +46,51 @@ ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double
 	return opt;
 }
 
+class ThrowsException : public IObjectiveEvaluator < HyperCube<double> >
+{
+public:
+	ThrowsException(const ThrowsException& src)
+	{
+		this->goal = src.goal;
+	}
+	ThrowsException(const HyperCube<double>& goal) { this->goal = goal; }
+	~ThrowsException() {}
+
+	IObjectiveScores<HyperCube<double>> EvaluateScore(const HyperCube<double>& systemConfiguration)
+	{
+		throw std::runtime_error("An error occured in ThrowsException::EvaluateScore");
+	}
+
+	bool IsCloneable() const
+	{
+		return true;
+	}
+
+	IObjectiveEvaluator<HyperCube<double>> * Clone() const
+	{
+		return new ThrowsException(*this);
+	}
+
+private:
+	HyperCube<double> goal;
+};
+
+ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoalThrowsException(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
+{
+	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
+	// TODO: check above
+	sceParams.P = 5;
+	sceParams.Pmin = 3;
+	goal.Define("a", 1, 2, 1);
+	goal.Define("b", 3, 4, 3);
+	HyperCube<double> hc = goal;
+	ThrowsException* evaluator = new ThrowsException(goal);
+	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
+
+	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
+	return opt;
+}
+
 ShuffledComplexEvolution<HyperCube<double>>* CreateQuadraticGoalPtr(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
@@ -175,7 +220,6 @@ SCENARIO("Sort objective scores", "[objectives]") {
 		REQUIRE(scores[3].Value(0) == std::sqrt(100 + 100));
 	}
 }
-
 
 SCENARIO("RNG basics", "[rng]") {
 	IRandomNumberGeneratorFactory<> factory(123);
@@ -384,13 +428,42 @@ SCENARIO("SCE basic port", "[optimizer]") {
 		auto terminationCondition = CreateCounterTermination(100);
 		HyperCube<double> goal;
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
-
-		WHEN("") {
+		WHEN("optimizing single-thread") {
+			opt.UseMultiThreading(false);
 			auto results = opt.Evolve();
 			REQUIRE(results.size() > 0);
 			//results.PrintTo(std::cout);
 			auto first = results[0];
 			REQUIRE(first.ObjectiveCount() == 1);
+		}
+		WHEN("optimizing multi-threaded") {
+			opt.UseMultiThreading(true);
+			auto results = opt.Evolve();
+			REQUIRE(results.size() > 0);
+			//results.PrintTo(std::cout);
+			auto first = results[0];
+			REQUIRE(first.ObjectiveCount() == 1);
+		}
+	}
+}
+
+SCENARIO("exception handling is thread-safe", "[optimizer]") {
+
+	GIVEN("An objective calculation that triggers an std::exception")
+	{
+		auto terminationCondition = CreateCounterTermination(100);
+		HyperCube<double> goal;
+		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoalThrowsException(goal, terminationCondition);
+		WHEN("optimizing multi-threaded") {
+			opt.UseMultiThreading(true);
+			string msg;
+			try {
+				auto results = opt.Evolve();
+			}
+			catch (std::exception& e)
+			{
+				msg = e.what();
+			}
 		}
 	}
 }
@@ -432,3 +505,25 @@ SCENARIO("Memory management", "[memory]") {
 	int hcAfterDeleteOpt = T::NumInstances();
 	REQUIRE(hcAfterDeleteOpt == hcBeforeCreation);
 }
+
+TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
+
+	auto terminationCondition = CreateWallClockTermination(14.4);
+	using T = HyperCube < double >;
+	T goal;
+
+	int hcInitialCount = T::NumInstances();
+	int iterNum;
+	for (int i = 0; i <= 7; i++) {
+		iterNum=i+1;
+		REQUIRE(iterNum == iterNum); // hack to check via cmd line in verbose mode.
+		int hcNewLoopCount = T::NumInstances();
+		REQUIRE(hcInitialCount == hcNewLoopCount);
+		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		auto results = opt.Evolve();
+		REQUIRE(results.size() > 0);
+		auto first = results[0];
+		REQUIRE(first.ObjectiveCount() == 1);
+	}
+}
+

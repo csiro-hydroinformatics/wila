@@ -2,19 +2,8 @@
 
 #include <vector>
 #include <boost/threadpool.hpp>
-#include "core.hpp"
-
 #include <thread>
-
-// On Pearcey, TIME_UTC is not defined with these include, and the threadpool fails to compile with:
-// error: ‘TIME_UTC’ was not declared in this scope
-//           xtime_get(&xt, TIME_UTC);
-#ifndef _WIN32
-#ifndef TIME_UTC
-#define TIME_UTC 1
-#endif
-#endif
-
+#include "core.hpp"
 #include "boost/threadpool.hpp"
 
 namespace mhcpp
@@ -84,25 +73,38 @@ namespace mhcpp
 					vector<vector<T>> subPop = MakeBins(population, nParallel);
 
 					vector<EvaluateScoresTask<T>*> taskPkgs;
+					vector<std::function<void()>> tasks;
 					for (size_t i = 0; i < subPop.size(); i++)
-						taskPkgs.push_back(new EvaluateScoresTask<T>(*evaluator, subPop.at(i)));
-
-					boost::threadpool::pool tp;
-					tp.size_controller().resize(nThreads);
-
-					for (int i = 0; i < subPop.size(); i++)
 					{
-						boost::threadpool::schedule(tp, boost::bind(&EvaluateScoresTask<T>::EvaluateScores, taskPkgs.at(i)));
+						auto eval = new EvaluateScoresTask<T> (*evaluator, subPop.at(i));
+						taskPkgs.push_back(eval);
+						std::function<void()> evalFunc =
+							[=]()
+						{
+							eval->EvaluateScores();
+						};
+						tasks.push_back(evalFunc);
 					}
-					tp.wait();
 
+					CrossThreadExceptions<std::function<void()>> cte(tasks);
+					vector<exception_ptr> exceptions;
+					try {
+						cte.ExecuteTasks(nParallel);
+						for (size_t i = 0; i < taskPkgs.size(); i++)
+						{
+							auto r = taskPkgs[i]->result;
+							for (size_t j = 0; j < r.size(); j++)
+								result.push_back(r[j]);
+						}
+					}
+					catch (const std::exception& e) {
+						exceptions.push_back(current_exception());
+					}
 					for (size_t i = 0; i < taskPkgs.size(); i++)
-					{
-						auto r = taskPkgs[i]->result;
-						for (size_t j = 0; j < r.size(); j++)
-							result.push_back(r[j]);
 						delete taskPkgs[i];
-					}
+
+					if(exceptions.size() > 0)
+						rethrow_exception(exceptions[0]);
 				}
 				else
 				{
