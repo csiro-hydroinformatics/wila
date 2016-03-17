@@ -1443,6 +1443,27 @@ namespace mhcpp
 				this->useMultiThreading = use;
 			}
 
+			void SetMaxDegreeOfParallelism(size_t maximum)
+			{
+				maxDegreeOfParallelism = std::min(GetMaxHardwareConcurrency(), std::max((size_t)1, maximum));
+			}
+
+			void SetMaxDegreeOfParallelismHardwareMinus(int freeCoresRemaining = 1)
+			{
+				int hardwareMax = GetMaxHardwareConcurrency();
+				maxDegreeOfParallelism = std::max(1, hardwareMax - freeCoresRemaining);
+			}
+
+			size_t GetMaxHardwareConcurrency()
+			{
+				return (size_t)std::thread::hardware_concurrency();
+			}
+
+			int GetMaxDegreeOfParallelism()
+			{
+				return maxDegreeOfParallelism;
+			}
+
 			// the next section has protected methods solely to facilitate unit testing.
 		protected:
 
@@ -1999,21 +2020,6 @@ namespace mhcpp
 			int CurrentShuffle;
 
 			int maxDegreeOfParallelism = 1;
-			void SetMaxDegreeOfParallelism(int maximum)
-			{
-				maxDegreeOfParallelism = std::max(1, maximum);
-			}
-
-			void SetMaxDegreeOfParallelismHardwareMinus(int freeCoresRemaining = 1)
-			{
-				int hardwareMax = std::thread::hardware_concurrency();
-				maxDegreeOfParallelism = std::max(1, hardwareMax - freeCoresRemaining);
-			}
-
-			int GetMaxDegreeOfParallelism()
-			{
-				return maxDegreeOfParallelism;
-			}
 
 			bool isCancelled = false;
 			//IComplex currentComplex;

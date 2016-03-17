@@ -66,15 +66,16 @@ namespace mhcpp
 				}
 			}
 
-			void ExecuteTasks(int nThreads)
+			void ExecuteTasks(size_t nThreads)
 			{
 				threadExceptions.clear();
-				boost::threadpool::pool tp(1);
-				if (!tp.size_controller().resize(nThreads)) {
-					// this can be false on Linux. But, this is unclear how to prevent this. Since the size_controller 
-				  // itself also catches a thread exception and 'just' return false, let's see if we can ignore it.
-					throw std::runtime_error(string("Unable to set size of threadpool. Caller requested nThreads=") + boost::lexical_cast<string>(nThreads));
-				}
+				boost::threadpool::pool tp(nThreads);
+				// Using resize leads to a memory leak on Linux, and eventually cannot create threads.
+				//if (!tp.size_controller().resize(nThreads)) {
+				//	// this can be false on Linux. But, this is unclear how to prevent this. Since the size_controller 
+				//  // itself also catches a thread exception and 'just' return false, let's see if we can ignore it.
+				//	throw std::runtime_error(string("Unable to set size of threadpool. Caller requested nThreads=") + boost::lexical_cast<string>(nThreads));
+				//}
 
 				for (int i = 0; i < tasks.size(); i++)
 				{

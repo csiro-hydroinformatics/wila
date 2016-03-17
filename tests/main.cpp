@@ -507,7 +507,6 @@ SCENARIO("Memory management", "[memory]") {
 }
 
 TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
-
 	auto terminationCondition = CreateWallClockTermination(14.4);
 	using T = HyperCube < double >;
 	T goal;
@@ -520,6 +519,9 @@ TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
 		int hcNewLoopCount = T::NumInstances();
 		REQUIRE(hcInitialCount == hcNewLoopCount);
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		size_t nCores = opt.GetMaxHardwareConcurrency();
+		size_t nThreads = std::min((size_t)3, nCores - 1);
+		opt.SetMaxDegreeOfParallelism(nThreads);
 		auto results = opt.Evolve();
 		REQUIRE(results.size() > 0);
 		auto first = results[0];
