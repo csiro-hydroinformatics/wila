@@ -525,12 +525,8 @@ namespace mhcpp
 		{
 			return sampler();
 		}
-		//IHyperCubeOperations CreateIHyperCubeOperations()
-		//{
-		//	return new HyperCubeOperations(rng.CreateFactory());
-		//}
 
-		VariateGenerator<std::default_random_engine, std::uniform_real_distribution<double>> sampler;
+		VariateGenerator<std::mt19937, std::uniform_real_distribution<double>> sampler;
 		IRandomNumberGeneratorFactory<> rng;
 		TSysConfig t;
 	};
@@ -586,6 +582,9 @@ namespace mhcpp
 	template<typename T, typename TEngine = IEvolutionEngine<T>>
 	class TerminationCheck
 	{
+	protected:
+		TerminationCheck() {}
+
 	public:
 		virtual void Reset() { }
 		virtual bool IsFinished(TEngine* engine) = 0;
@@ -629,10 +628,22 @@ namespace mhcpp
 	private:
 		class AlwaysFinished : public TerminationCheck < T, TEngine >
 		{
+		public:
 			bool IsFinished(TEngine* engine) { return true; }
 			bool IsThreadSafe() { return true; };
 			TerminationCheck < T, TEngine >* Clone() const { return new AlwaysFinished(); };
+
+			~AlwaysFinished() {}
 		};
+
+		void DeleteCheck()
+		{
+			if (Check != nullptr) {
+				delete Check;
+				Check = nullptr;
+			}
+		}
+
 	public:
 		ITerminationCondition()
 		{
@@ -641,6 +652,7 @@ namespace mhcpp
 
 		ITerminationCondition(const TerminationCheck<T,TEngine>& isFinishedFunc)
 		{
+			DeleteCheck();
 			this->Check = isFinishedFunc.Clone();
 		}
 
@@ -680,12 +692,9 @@ namespace mhcpp
 			return *this;
 		}
 
-		~ITerminationCondition()
+		virtual ~ITerminationCondition()
 		{
-			if (Check != nullptr){
-				delete Check;
-				Check = nullptr;
-			}
+			DeleteCheck();
 		}
 
 		void SetEvolutionEngine(TEngine* engine) { this->engine = engine; };

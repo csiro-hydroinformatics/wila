@@ -12,6 +12,9 @@ namespace mhcpp
 	{
 		using namespace std;
 
+
+		typedef std::mt19937 default_wila_random_engine;
+
 		template<typename RNG, typename Distribution>
 		class VariateGenerator
 		{
@@ -42,6 +45,20 @@ namespace mhcpp
 				this->_eng = std::move(vg._eng);
 				this->_dist = std::move(vg._dist);
 			}
+
+			~VariateGenerator()
+			{
+				Clean<RNG>(this->_eng);
+			}
+
+			template<typename RNG1>
+			void Clean(typename enable_if<std::is_pointer<RNG1>::value, RNG1>::type e)
+			{
+				delete e;
+			}
+
+			template<typename RNG1>
+			void Clean(typename enable_if<!std::is_pointer<RNG1>::value, RNG1>::type e) {}
 
 			VariateGenerator& operator=(const VariateGenerator& vg)
 			{
@@ -86,24 +103,24 @@ namespace mhcpp
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #if GCC_VERSION < 40800
-		typedef VariateGenerator < std::default_random_engine, std::discrete_distribution<int> > RngInt;
+		typedef VariateGenerator < default_wila_random_engine, std::discrete_distribution<int> > RngInt;
 #else
-		template <typename RNG = std::default_random_engine>
+		template <typename RNG = default_wila_random_engine>
 		using RngInt = VariateGenerator < RNG, std::discrete_distribution<int> >;
 #endif
 #else
-		template <typename RNG = std::default_random_engine>
+		template <typename RNG = default_wila_random_engine>
 		using RngInt = VariateGenerator < RNG, std::discrete_distribution<int> >;
 #endif
 
-		template<typename RNG = std::default_random_engine>
+		template<typename RNG = default_wila_random_engine>
 		class IRandomNumberGeneratorFactory
 		{
 
 		private:
 			/** \brief	A random number generator factory. */
 
-			template<typename RngEngine = std::default_random_engine>
+			template<typename RngEngine = default_wila_random_engine>
 			class RandomNumberGeneratorFactory
 			{
 			private:
@@ -112,7 +129,7 @@ namespace mhcpp
 				typedef RngEngine engine_type; // No typename needed here. See http://stackoverflow.com/questions/6489351/nested-name-specifier
 				//	http://stackoverflow.com/questions/495021/why-can-templates-only-be-implemented-in-the-header-file
 
-				RandomNumberGeneratorFactory(int seed) : seedEngine(seed)
+				RandomNumberGeneratorFactory(unsigned int seed) : seedEngine(seed)
 				{
 				}
 
@@ -179,7 +196,7 @@ namespace mhcpp
 
 			};
 
-			RandomNumberGeneratorFactory<> rng;
+			RandomNumberGeneratorFactory<RNG> rng;
 
 		public:
 			IRandomNumberGeneratorFactory() : rng(0)
@@ -228,6 +245,12 @@ namespace mhcpp
 				return rng();
 			}
 
+			unsigned int PeekNext() const
+			{
+				RandomNumberGeneratorFactory<RNG> rngTmp(rng);
+				return rngTmp();
+			}
+
 			std::vector<unsigned int> Next(size_t size)
 			{
 				std::vector<unsigned int> result;
@@ -243,32 +266,43 @@ namespace mhcpp
 				return IRandomNumberGeneratorFactory(Next());
 			}
 
-			std::default_random_engine CreateNewStd()
+			default_wila_random_engine CreateNewStd()
 			{
 				unsigned int seed = Next();
 				return CreateNewStd(seed);
 			}
 
-			static std::default_random_engine CreateNewStd(unsigned int seed)
+			static default_wila_random_engine CreateNewStd(unsigned int seed)
 			{
-				return std::default_random_engine(seed);
+				return default_wila_random_engine(seed);
+			}
+
+			RNG CreateNewEngine()
+			{
+				unsigned int seed = Next();
+				return CreateNewEngine(seed);
+			}
+
+			static RNG CreateNewEngine(unsigned int seed)
+			{
+				return RNG(seed);
 			}
 
 			// http://stackoverflow.com/questions/7166799/specialize-template-function-for-template-class
 			template<class DistributionType = std::uniform_real_distribution<double>>
-			VariateGenerator<std::default_random_engine, DistributionType> CreateVariateGenerator(DistributionType& dist, unsigned int seed) const
+			VariateGenerator<RNG, DistributionType> CreateVariateGenerator(DistributionType& dist, unsigned int seed) const
 			{
-				return VariateGenerator<std::default_random_engine, DistributionType>(CreateNewStd(seed), dist);
+				return VariateGenerator<RNG, DistributionType>(CreateNewEngine(seed), dist);
 			}
 
 			template<class DistributionType = std::uniform_real_distribution<double>>
-			VariateGenerator<std::default_random_engine, DistributionType> CreateVariateGenerator(DistributionType& dist)
+			VariateGenerator<RNG, DistributionType> CreateVariateGenerator(DistributionType& dist)
 			{
-				return VariateGenerator<std::default_random_engine, DistributionType>(CreateNewStd(), dist);
+				return VariateGenerator<RNG, DistributionType>(CreateNewEngine(), dist);
 			}
 		};
 
-		template<typename RNG = std::default_random_engine>
+		template<typename RNG = default_wila_random_engine>
 		RngInt<RNG> CreateTrapezoidalRng(size_t n, const RNG& generator, double trapezoidalFactor = -1)
 		{
 			std::vector<double> weights(n);
@@ -278,7 +312,7 @@ namespace mhcpp
 
 			if ((trapezoidalFactor <= 0) || (trapezoidalFactor >= 2))
 			{
-				// default as per the original SCE paper. Note that we do not need 
+				// default as per the original SCE paper. Note that we do not need
 				// to normalize: std::discrete_distribution takes care of it
 				for (size_t i = 1; i <= n; i++)
 					weights[i - 1] = (n + 1 - i);
@@ -286,8 +320,8 @@ namespace mhcpp
 			else
 			{
 				// y = ax + b
-				double b = trapezoidalFactor; // y(0) = b 
-				double a = 2 * (1 - b) / (m - 1);  // because y(n-1) = (2-b) = a * (n-1) + b 
+				double b = trapezoidalFactor; // y(0) = b
+				double a = 2 * (1 - b) / (m - 1);  // because y(n-1) = (2-b) = a * (n-1) + b
 				for (size_t i = 0; i < n; i++)
 					weights[i] = a * i + b;
 			}
@@ -305,7 +339,7 @@ namespace mhcpp
 				++i;
 				return w;
 			});
-			return VariateGenerator<std::default_random_engine, std::discrete_distribution<int>>(generator, distribution);
+			return VariateGenerator<default_wila_random_engine, std::discrete_distribution<int>>(generator, distribution);
 		}
 
 		template<typename X>
@@ -320,7 +354,7 @@ namespace mhcpp
 			return result;
 		}
 
-		template<typename RNG = std::default_random_engine>
+		template<typename RNG = default_wila_random_engine>
 		vector<int> SampleFrom(RngInt<RNG>& drng, size_t nsampling)
 		{
 			size_t size = drng.distribution().max() - drng.distribution().min() + 1;

@@ -20,21 +20,26 @@ This is written in C++ using some features from the C++11 standard. It is known 
 
 # Getting started
 
-## Unit tests
+## Build library and packages
+
+You will need the following dependencies available:
+
+* Boost
+* Threading Building Blocks (https://www.threadingbuildingblocks.org/)
+* threadpool (http://threadpool.sourceforge.net/, download and place in the top
+  of your source tree for CMake to find it)
 
 ```sh
-cd tests
 cmake .
-make
-./mhcpptest
+make package
 ```
 
-## Sample application
+## Unit tests
+
+The step above will also try and build the test application. To run the tests:
 
 ```sh
-cd doc/sample/gettingstarted
-cmake .
-make
+./wila_tests
 ```
 
 ## Further Documentation

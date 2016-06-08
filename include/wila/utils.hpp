@@ -6,6 +6,8 @@
 #include <mutex>
 #include <thread>
 #include <iostream>
+#include <algorithm>
+#include <numeric>
 #include <boost/lexical_cast.hpp>
 
 
@@ -127,6 +129,7 @@ namespace mhcpp
 			static std::atomic<int> instances;
 		protected:
 			InstanceCounter() { instances++; }
+			InstanceCounter(const InstanceCounter& src) { instances++; }
 		public:
 			static int NumInstances() { return InstanceCounter<T>::instances; };
 			virtual ~InstanceCounter() { instances--; }

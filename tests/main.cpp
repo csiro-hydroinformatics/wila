@@ -7,6 +7,14 @@
 #include <iostream>
 #include <iterator>
 #include "catch.hpp"
+
+
+//#define WILA_USE_VLD
+#ifdef WILA_USE_VLD
+#include<vld.h>
+#endif
+
+
 #include "common.h"
 
 using namespace std;
@@ -15,99 +23,7 @@ using namespace mhcpp::random;
 using namespace mhcpp::optimization;
 using namespace mhcpp::utils;
 
-
-ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateCounterTermination(int maxCount)
-{
-	CounterTestFinished<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(maxCount);
-	ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition(c);
-	return terminationCondition;
-}
-
-ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateWallClockTermination(double seconds)
-{
-	MaxWalltimeCheck<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(seconds / 3600);
-	return ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition(c);
-}
-
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
-{
-	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
-	// TODO: check above
-	sceParams.P = 5;
-	sceParams.Pmin = 3;
-
-	goal.Define("a", 1, 2, 1);
-	goal.Define("b", 3, 4, 3);
-	HyperCube<double> hc = goal;
-	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
-	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
-
-	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
-	return opt;
-}
-
-class ThrowsException : public IObjectiveEvaluator < HyperCube<double> >
-{
-public:
-	ThrowsException(const ThrowsException& src)
-	{
-		this->goal = src.goal;
-	}
-	ThrowsException(const HyperCube<double>& goal) { this->goal = goal; }
-	~ThrowsException() {}
-
-	IObjectiveScores<HyperCube<double>> EvaluateScore(const HyperCube<double>& systemConfiguration)
-	{
-		throw std::runtime_error("An error occured in ThrowsException::EvaluateScore");
-	}
-
-	bool IsCloneable() const
-	{
-		return true;
-	}
-
-	IObjectiveEvaluator<HyperCube<double>> * Clone() const
-	{
-		return new ThrowsException(*this);
-	}
-
-private:
-	HyperCube<double> goal;
-};
-
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoalThrowsException(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
-{
-	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
-	// TODO: check above
-	sceParams.P = 5;
-	sceParams.Pmin = 3;
-	goal.Define("a", 1, 2, 1);
-	goal.Define("b", 3, 4, 3);
-	HyperCube<double> hc = goal;
-	ThrowsException* evaluator = new ThrowsException(goal);
-	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
-
-	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
-	return opt;
-}
-
-ShuffledComplexEvolution<HyperCube<double>>* CreateQuadraticGoalPtr(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
-{
-	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
-	// TODO: check above
-	sceParams.P = 5;
-	sceParams.Pmin = 3;
-
-	goal.Define("a", 1, 2, 1);
-	goal.Define("b", 3, 4, 3);
-	HyperCube<double> hc = goal;
-	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
-	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
-
-	return new ShuffledComplexEvolution<HyperCube<double>>(evaluator, seeding, terminationCondition, sceParams);
-}
-
-SCENARIO("Basic hypercubes", "[sysconfig]") {
+TEST_CASE("Basic hypercubes", "[sysconfig]") {
 
 	GIVEN("A 2 dimensional hypercube")
 	{
@@ -146,7 +62,7 @@ SCENARIO("Basic hypercubes", "[sysconfig]") {
 	}
 }
 
-SCENARIO("Calculation of a centroid", "[sysconfig]") {
+TEST_CASE("Calculation of a centroid", "[sysconfig]") {
 
 	GIVEN("A population of hypercubes")
 	{
@@ -169,7 +85,7 @@ SCENARIO("Calculation of a centroid", "[sysconfig]") {
 	}
 }
 
-SCENARIO("Basic objective evaluator", "[objectives]") {
+TEST_CASE("Basic objective evaluator", "[objectives]") {
 
 	GIVEN("Single-objective calculator, L2 distance")
 	{
@@ -190,7 +106,7 @@ SCENARIO("Basic objective evaluator", "[objectives]") {
 	}
 }
 
-SCENARIO("Sort objective scores", "[objectives]") {
+TEST_CASE("Sort objective scores", "[objectives]") {
 
 	GIVEN("Single-objective calculator, L2 distance")
 	{
@@ -221,10 +137,34 @@ SCENARIO("Sort objective scores", "[objectives]") {
 	}
 }
 
-SCENARIO("RNG basics", "[rng]") {
-	IRandomNumberGeneratorFactory<> factory(123);
+TEST_CASE("RNG basics", "[rng]") {
+	// These test cases were largely written for chasing up the bug
+	// https://jira.csiro.au/browse/WIRADA-341
+	GIVEN("An std::mt19937")
+	{
+		unsigned int seed = 123;
+		std::mt19937 stdRng;
+		WHEN("The first number is sampled from it") {
+			THEN("It is not the seed that was used")
+			{
+				REQUIRE_FALSE(stdRng() == seed);
+			}
+		}
+		WHEN("another engine is created, seeded with the sampled value out of the first") {
+			THEN("The first value sampled from each of the two engine differs")
+			{
+				unsigned int seedNewRng = stdRng();				
+				std::mt19937 stdRng2(seedNewRng);
+				unsigned int firstInt = stdRng();
+				unsigned int secondInt = stdRng2();
+				REQUIRE_FALSE(firstInt == seedNewRng);
+				REQUIRE_FALSE(firstInt == secondInt);
+			}
+		}
+	}
 	GIVEN("A random integer generator IRandomNumberGeneratorFactory<>")
 	{
+		IRandomNumberGeneratorFactory<> factory(123);
 		WHEN("Another is created with a different seed") {
 			IRandomNumberGeneratorFactory<> f2(456);
 			THEN("The sequence of random numbers is different")
@@ -249,12 +189,157 @@ SCENARIO("RNG basics", "[rng]") {
 					REQUIRE(x1[i] == x2[i]);
 			}
 		}
+		WHEN("A new factory is generated from the first one via CreateNew") {
+			IRandomNumberGeneratorFactory<> f2;
+			THEN("The initial factory changes seed after CreateNew, if we peek")
+			{
+				auto nextSeed = factory.PeekNext();
+				REQUIRE(nextSeed == factory.PeekNext());
+				f2 = factory.CreateNew();
+				auto nextInitSeed = factory.PeekNext();
+				REQUIRE_FALSE(nextSeed == nextInitSeed);
+				AND_THEN("The first seed produced by each of these rng factories differs")
+				{
+					REQUIRE(factory.PeekNext() != f2.PeekNext());
+					REQUIRE(factory.Next() != f2.Next());
+					REQUIRE_FALSE(factory.Equals(f2));
+					auto x1 = factory.Next(10);
+					auto x2 = f2.Next(10);
+					REQUIRE(x1[0] != x1[1]);
+					for (size_t i = 0; i < 10; i++)
+						REQUIRE_FALSE(x1[i] == x2[i]);
+				}
+			}
+		}
 	}
 }
 
-SCENARIO("trapezoidal, discrete RNG to sample from a population of points, as used to create the sub-complexes", "[rng]")
+TEST_CASE("RNG memory management", "[memory]") {
+	auto count = [&]() {return TestRandomEngine::NumInstances(); };
+	int initialCount = count();
+	using rngtype = IRandomNumberGeneratorFactory<TestRandomEngine>;
+	rngtype* factory = new rngtype(123);
+	REQUIRE(initialCount + 1 == count());
+	rngtype* f2 = new rngtype(456);
+	REQUIRE(initialCount + 2 == count());
+	rngtype f3 = factory->CreateNew();
+	REQUIRE(initialCount + 3 == count());
+	
+	std::uniform_real_distribution<double> dist(0, 1);
+	auto rng = f3.CreateVariateGenerator<std::uniform_real_distribution<double>>(dist, 333);
+	REQUIRE(initialCount + 4 == count());
+	delete factory;
+	REQUIRE(initialCount + 3 == count());
+	delete f2;
+	REQUIRE(initialCount + 2 == count());
+}
+
+TEST_CASE("RNG factories and resulting RNG engines", "[rng]") {
+	GIVEN("RNG factories spawned hierarchically")
+	{
+		int seed = 456;
+		int numFactories = 2;
+		int numEngines = 3;
+		int numDraw = 10;
+
+		vector<vector<IRandomNumberGeneratorFactory<>>> rngs(numFactories);
+		vector<vector<std::mt19937>> rngEngines(numFactories);
+			
+		IRandomNumberGeneratorFactory<> rngf(seed);
+		for (int i = 0; i < numFactories; i++)
+		{
+			auto rngf_2 = rngf.CreateNew();
+			REQUIRE_FALSE(rngf_2.Equals(rngf));
+			for (int j = 0; j < numEngines; j++)
+			{
+				rngs[i].push_back(rngf_2);
+				auto e = rngf_2.CreateNewStd();
+				rngEngines[i].push_back(e);
+			}
+		}
+
+		for (int i = 0; i < numFactories; i++)
+			for (int j = 0; j < numEngines; j++)
+				for (int i_1 = 0; i_1 < numFactories; i_1++)
+					for (int j_1 = 0; j_1 < numEngines; j_1++)
+					{
+						if ((i != i_1) && (j != j_1))
+						{
+							string indicesMsg = 
+								string("[") +
+								boost::lexical_cast<string>(i) +
+								string("][") +
+								boost::lexical_cast<string>(j) +
+								string("]") +
+								string(" and [") +
+								boost::lexical_cast<string>(i_1) +
+								string("][") +
+								boost::lexical_cast<string>(j_1) +
+								string("]");
+							if (rngs[i][j].Equals(rngs[i_1][j_1]))
+							{
+								string msg =
+									string("RNG factories are equal for ") + indicesMsg;
+								FAIL(msg);
+							}
+							if (rngEngines[i][j] == rngEngines[i_1][j_1])
+							{
+								string msg =
+									string("RNG engines are equal for ") + indicesMsg;
+								FAIL(msg);
+							}
+						}
+					}
+	}
+}
+
+
+TEST_CASE("RNG sequences", "[rng]") {
+	GIVEN("A random integer generator IRandomNumberGeneratorFactory<>")
+	{
+		auto v1 = CreateRandValues();
+		THEN("The sequence of random numbers is different")
+		{
+			bool b = v1->IsPairwiseDistinct();
+			string msg = "";
+			if (!b)
+				WARN(v1->FailedPairwiseDistinct());
+			REQUIRE(b);
+		}
+
+		auto v2 = CreateRandValues();
+		WHEN("A different sequence is create with the same default seed and all inputs equal") 
+		{
+			THEN("these two distinct randomized sequences are identical in their content")
+			{
+				REQUIRE(v1->Equals(*v2));
+			}
+		}
+		delete v2;
+		auto v3 = CreateRandValues(3);
+		WHEN("A sequence is create with a different seed and all other inputs equal")
+		{
+			THEN("these two distinct randomized sequences differ in their content")
+			{
+				REQUIRE_FALSE(v1->Equals(*v3));
+			}
+		}
+		delete v1;
+		auto v4 = CreateRandValues(3);
+		WHEN("Two sequences are created but with the same but non default seed")
+		{
+			THEN("these two distinct randomized sequences are identical in their content")
+			{
+				REQUIRE(v3->Equals(*v4));
+			}
+		}
+		delete v3;
+		delete v4;
+	}
+}
+TEST_CASE("trapezoidal, discrete RNG to sample from a population of points, as used to create the sub-complexes", "[rng]")
 {
-	std::default_random_engine generator(234);
+	std::mt19937 generator(234);
 	const int ncandidates = 10;
 	RngInt<> rng = CreateTrapezoidalRng(ncandidates, generator);
 
@@ -278,7 +363,7 @@ SCENARIO("trapezoidal, discrete RNG to sample from a population of points, as us
 
 }
 
-SCENARIO("URS RNG basics", "[rng]") {
+TEST_CASE("URS RNG basics", "[rng]") {
 	HyperCube<double> hc;
 	hc.Define("a", 1, 2, 1.5);
 	hc.Define("b", 3, 4, 3.3);
@@ -336,7 +421,7 @@ SCENARIO("URS RNG basics", "[rng]") {
 	}
 }
 
-SCENARIO("Complex for SCE, single objective", "[optimizer]") {
+TEST_CASE("Complex for SCE, single objective", "[optimizer]") {
 
 
 	using T = HyperCube < double > ;
@@ -406,7 +491,7 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 
 		Complex<T>* cplx = new Complex<T>
 			(scores, &evaluator, false, rng, &unif, false,
-			fitnessAssignment, terminationCondition, nullptr, std::map<string, string>(), q, alpha, beta);
+			fitnessAssignment, terminationCondition, true, nullptr, std::map<string, string>(), q, alpha, beta);
 		THEN("The complex evolution completes without exception")
 		{
 			REQUIRE_NOTHROW(cplx->Evolve());
@@ -420,11 +505,10 @@ SCENARIO("Complex for SCE, single objective", "[optimizer]") {
 
 }
 
-SCENARIO("SCE basic port", "[optimizer]") {
+TEST_CASE("SCE basic port", "[optimizer]") {
 
 	GIVEN("A 2D Hypercube")
 	{
-
 		auto terminationCondition = CreateCounterTermination(100);
 		HyperCube<double> goal;
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
@@ -447,7 +531,7 @@ SCENARIO("SCE basic port", "[optimizer]") {
 	}
 }
 
-SCENARIO("exception handling is thread-safe", "[optimizer]") {
+TEST_CASE("exception handling is thread-safe", "[optimizer]") {
 
 	GIVEN("An objective calculation that triggers an std::exception")
 	{
@@ -468,13 +552,13 @@ SCENARIO("exception handling is thread-safe", "[optimizer]") {
 	}
 }
 
-SCENARIO("Termination conditions", "[optimizer]") {
+TEST_CASE("Termination conditions", "[optimizer]") {
 
 	// TODO (not thread safe now)
 	//GIVEN("A marginal improvement termination condition")
 	GIVEN("A runtime length termination condition")
 	{
-		auto terminationCondition = CreateWallClockTermination(5.0);
+		auto terminationCondition = CreateWallClockTermination<>(5.0);
 		HyperCube<double> goal;
 		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
 
@@ -486,10 +570,36 @@ SCENARIO("Termination conditions", "[optimizer]") {
 			REQUIRE(first.ObjectiveCount() == 1);
 		}
 	}
+
+	GIVEN("A max nb iteration termination condition")
+	{
+		auto terminationCondition = CreateMaxIterationTermination(1000);
+		HyperCube<double> goal;
+
+		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		WHEN("Complexes are allowed to check on termination criterion, and the criterion is thread safe") {
+			opt.AllowComplexPrematureTermination(true);
+			auto results = opt.Evolve();
+			REQUIRE(results.size() > 0);
+			THEN("The number of evaluations is very close to the maximum nb of iterations") {
+				REQUIRE(opt.EvaluationCount() > 1000);
+				REQUIRE(opt.EvaluationCount() < 1020);
+			}
+		}
+		WHEN("Complexes are not allowed to check on termination criterion, and the criterion is thread safe") {
+			opt.AllowComplexPrematureTermination(false);
+			auto results = opt.Evolve();
+			REQUIRE(results.size() > 0);
+			THEN("The number of evaluations is more than the maximum nb of iterations, but not too much") {
+				REQUIRE(opt.EvaluationCount() > 1001);
+				REQUIRE(opt.EvaluationCount() < 1100);
+			}
+		}
+	}
 }
 
-SCENARIO("Memory management", "[memory]") {
-	auto terminationCondition = CreateWallClockTermination(5.0);
+TEST_CASE("Memory management", "[memory]") {
+	auto terminationCondition = CreateWallClockTermination<>(5.0);
 	using T = HyperCube < double > ;
 	T goal;
 	int hcBeforeCreation = T::NumInstances();
@@ -497,6 +607,7 @@ SCENARIO("Memory management", "[memory]") {
 	int hcAfterCreation = T::NumInstances();
 	//REQUIRE(hcStart == hcEnd);
 	int hcBeforeEvolve = T::NumInstances();
+	opt->SetLogger();
 	IOptimizationResults<T> results = opt->Evolve();
 	int hcAfterEvolve = T::NumInstances();
 	results = IOptimizationResults<T>();
@@ -507,7 +618,7 @@ SCENARIO("Memory management", "[memory]") {
 }
 
 TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
-	auto terminationCondition = CreateWallClockTermination(14.4);
+	auto terminationCondition = CreateWallClockTermination<>(14.4);
 	using T = HyperCube < double >;
 	T goal;
 

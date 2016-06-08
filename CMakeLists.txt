@@ -1,24 +1,16 @@
 cmake_minimum_required(VERSION 2.8)
 
-SET (VERSION 0.5.5)
+IF(DEFINED CMAKE_BUILD_TYPE)
+    SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of
+build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Coverage Debug
+Release RelWithDebInfo MinSizeRel.")
+ELSE()
+    SET(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build,
+options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Coverage Debug Release
+RelWithDebInfo MinSizeRel.")
+ENDIF()
 
-## section: Macro
-MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar)
-  IF(MSVC)
-    GET_FILENAME_COMPONENT(PrecompiledBasename ${PrecompiledHeader} NAME_WE)
-    SET(PrecompiledBinary "${CMAKE_CURRENT_BINARY_DIR}/${PrecompiledBasename}.pch")
-    SET(Sources ${${SourcesVar}})
-
-    SET_SOURCE_FILES_PROPERTIES(${PrecompiledSource}
-                                PROPERTIES COMPILE_FLAGS "/Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
-                                           OBJECT_OUTPUTS "${PrecompiledBinary}")
-    SET_SOURCE_FILES_PROPERTIES(${Sources}
-                                PROPERTIES COMPILE_FLAGS "/Yu\"${PrecompiledBinary}\" /FI\"${PrecompiledBinary}\" /Fp\"${PrecompiledBinary}\""
-                                           OBJECT_DEPENDS "${PrecompiledBinary}")  
-    # Add precompiled header to SourcesVar
-    LIST(APPEND ${SourcesVar} ${PrecompiledSource})
-  ENDIF(MSVC)
-ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
+SET (VERSION 0.5.8)
 
 ## start setting
 SET (this_target wila)
@@ -43,7 +35,7 @@ SET(${this_target}_HEADER_FILES
 
 # Use the FindBoost macro to find boost.
 # Note that if boost is installed in a non-standard location you may
-# need to help it by setting some variables. For example, on 
+# need to help it by setting some variables. For example, on
 # CENTOS 5 or 6:
 #     cmake -DBOOST_INCLUDEDIR=/usr/include/boost148 \
 #           -DBOOST_LIBRARYDIR=/usr/lib64/boost148 .
@@ -55,6 +47,11 @@ IF(DEFINED ENV{INTEL_CC_HOME})
 ENDIF()
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
+
+if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
+    list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../../cmake_modules")
+    INCLUDE(CodeCoverage)
+endif()
 
 find_package(TBB REQUIRED)
 #find_path(TBB_INCLUDE_DIRS concurrent_vector.h PATH_SUFFIXES tbb)
@@ -73,7 +70,7 @@ INCLUDE_DIRECTORIES(
     ${THREADPOOL_INCLUDE_DIRS}
 )
 
-## section: precompiled header	
+## section: precompiled header
 SET_SOURCE_FILES_PROPERTIES(${this_target}_HEADER_FILES
                             PROPERTIES HEADER_FILE_ONLY TRUE)
 LIST(APPEND ${this_target}_SOURCE_FILES ${${this_target}_HEADER_FILES})
@@ -84,7 +81,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 ## section: add target
 ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
 ADD_EXECUTABLE(wila_tests tests/common.cpp tests/main.cpp)
-TARGET_LINK_LIBRARIES(wila_tests 
+TARGET_LINK_LIBRARIES(wila_tests
     pthread
     ${this_target}
     ${Boost_LIBRARIES}
@@ -93,9 +90,10 @@ TARGET_LINK_LIBRARIES(wila_tests
 
 # Files to be installed - used by packaging stuff below
 INSTALL(FILES ${${this_target}_HEADER_FILES} DESTINATION include/wila)
-INSTALL(TARGETS ${this_target} 
+INSTALL(TARGETS ${this_target}
   LIBRARY DESTINATION lib
 )
+INSTALL(TARGETS wila_tests DESTINATION bin)
 
 # Packages - currently just an RPM
 set(CPACK_PACKAGE_VERSION ${VERSION})
@@ -108,3 +106,27 @@ set(CPACK_PACKAGE_VENDOR "https://github.com/jmp75/wila")
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
+
+# Add new build types
+message("* Adding build types...")
+SET(CMAKE_CXX_FLAGS_COVERAGE
+    "${GCC_DEBUG_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage"
+    CACHE STRING "Flags used by the C++ compiler during coverage builds."
+    FORCE )
+SET(CMAKE_C_FLAGS_COVERAGE
+    "${GCC_DEBUG_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage"
+    CACHE STRING "Flags used by the C compiler during coverage builds."
+    FORCE )
+SET(CMAKE_EXE_LINKER_FLAGS_COVERAGE
+    ""
+    CACHE STRING "Flags used for linking binaries during coverage builds."
+    FORCE )
+SET(CMAKE_SHARED_LINKER_FLAGS_COVERAGE
+    ""
+    CACHE STRING "Flags used by the shared libraries linker during coverage builds."
+    FORCE )
+MARK_AS_ADVANCED(
+    CMAKE_CXX_FLAGS_COVERAGE
+    CMAKE_C_FLAGS_COVERAGE
+    CMAKE_EXE_LINKER_FLAGS_COVERAGE
+    CMAKE_SHARED_LINKER_FLAGS_COVERAGE )

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <thread>
 #include <mutex>
 #include "sce.h"
@@ -35,7 +36,7 @@ namespace mhcpp
 		public:
 			//virtual void Write(std::vector<IBaseObjectiveScores> scores, const std::map<string, string>& ctags) = 0;
 			//virtual void Write(FitnessAssignedScores<double> worstPoint, const std::map<string, string>& ctags) = 0;
-			virtual void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags) = 0;
+			virtual void Write(TSys* newPoint, const std::map<string, string>& ctags) = 0;
 			virtual void Write(const string& message, const std::map<string, string>& ctags) = 0;
 			virtual void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags) = 0;
 			virtual void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& ctags) = 0;
@@ -46,6 +47,8 @@ namespace mhcpp
 			virtual std::map<string, vector<double>>GetNumericData() = 0;
 			virtual int GetLength() = 0;
 			virtual ILoggerMh<TSys>* CreateNew() = 0;
+
+			virtual ~ILoggerMh () {}
 		};
 
 		class LoggerMhHelper
@@ -119,246 +122,6 @@ namespace mhcpp
 				return std::make_tuple(key, value);
 			}
 
-			//	static IObjectiveScores[] CreateNoScore<TSysConfig>(TSysConfig newPoint) where TSysConfig : ISystemConfiguration
-			//	{
-			//		return new IObjectiveScores[] { new ZeroScores<TSysConfig>() { SystemConfiguration = newPoint } };
-			//	}
-
-			//		/// <summary>
-			//		/// Serialise the logger to csv.
-			//		/// </summary>
-			//		/// <param name="logger">The logger.</param>
-			//		/// <param name="outputCsvLogFile">The output CSV log file.</param>
-			//		/// <param name="resultsName">Name of the results.</param>
-			//		/// <param name="delimiter">The delimiter.</param>
-			//		static void CsvSerialise(this InMemoryLogger logger, string outputCsvLogFile, string resultsName, string delimiter = ",")
-			//	{
-			//		var logInfo = ExtractLog(logger, resultsName);
-			//		WriteToCsv(outputCsvLogFile, logInfo.Item2, logInfo.Item1);
-			//	}
-
-			//	/// <summary>
-			//	/// Extract information from a logging object to a format using only classes from the Base Class Library
-			//	/// </summary>
-			//	/// <param name="logger"></param>
-			//	/// <param name="resultsName"></param>
-			//	/// <returns>A tuple - the first item is a list of strings, the unique names (column headers) and the second item is a list of dictionaries (the information for each line)</returns>
-			//	static Tuple<List<string>, List<Dictionary<string, string>>> ExtractLog(this IEnumerable<ILogInfo> logger, string resultsName = "")
-			//	{
-			//		List<IResultsSetInfo> allResultsSets = new List<IResultsSetInfo>();
-			//		var list = logger.ToList();
-			//		foreach(var item in list)
-			//		{
-			//			IResultsSetInfo resultsSet = createResultsSet(item, resultsName);
-			//			if (resultsSet != null)
-			//				allResultsSets.Add(resultsSet);
-			//		}
-
-			//		HashSet<string> uniqueKeys = new HashSet<string>();
-			//		List<Dictionary<string, string>> lines = new List<Dictionary<string, string>>();
-			//		foreach(IResultsSetInfo s in allResultsSets)
-			//		{
-			//			foreach(IKeyValueInfoProvider lineInfo in s)
-			//			{
-			//				Dictionary<string, string> line = lineInfo.AsDictionary();
-			//				foreach(string key in line.Keys)
-			//					uniqueKeys.Add(key);
-
-			//				lines.Add(line);
-			//			}
-			//		}
-
-			//		List<string> keys = uniqueKeys.ToList();
-			//		keys.Sort();
-			//		var logInfo = Tuple.Create(keys, lines);
-			//		return logInfo;
-			//	}
-
-			//	static void ToColumns(this IEnumerable<ILogInfo> logger, out Dictionary<string, string[]> strInfo, out Dictionary<string, double[]> numericInfo)
-			//	{
-			//		var dataLog = ExtractLog(logger);
-			//		var keys = dataLog.Item1.ToArray();
-			//		var lines = dataLog.Item2.ToArray();
-
-			//		var list = logger.ToList();
-			//		var firstScoreEntry = list.First(x = > x.Scores.Length > 0);
-			//		var firstScore = firstScoreEntry.Scores[0];
-			//		var hc = firstScore.GetSystemConfiguration() as IHyperCube<double>;
-			//		if (hc == null)
-			//			throw new NotSupportedException("The first item in the log must be including information on an IHyperCube<double>");
-			//		var numericColumnsList = new List<string>(hc.GetVariableNames());
-			//		for (int i = 0; i < firstScore.ObjectiveCount; i++)
-			//			numericColumnsList.Add(firstScore.GetObjective(i).Name);
-			//		var numericColumns = numericColumnsList.ToArray();
-			//		var stringColumns = keys.Where(x = > !numericColumns.Contains(x)).ToArray();
-
-
-			//		strInfo = new Dictionary<string, string[]>();
-			//		for (int i = 0; i < stringColumns.Length; i++)
-			//			strInfo.Add(stringColumns[i], new string[lines.Length]);
-			//		numericInfo = new Dictionary<string, double[]>();
-			//		for (int i = 0; i < numericColumns.Length; i++)
-			//			numericInfo.Add(numericColumns[i], new double[lines.Length]);
-
-			//		for (int i = 0; i < lines.Length; i++)
-			//		{
-			//			foreach(var p in numericInfo.Keys)
-			//				numericInfo[p][i] = double.NaN;
-			//			foreach(var k in lines[i].Keys)
-			//			{
-			//				var value = lines[i][k];
-			//				if (strInfo.ContainsKey(k))
-			//					strInfo[k][i] = value;
-			//				if (numericInfo.ContainsKey(k))
-			//				{
-			//					double d = 0;
-			//					numericInfo[k][i] = Double.TryParse(value, out d) ? d : double.NaN;
-			//				}
-			//			}
-			//		}
-			//	}
-
-			//	/// <summary>
-			//	/// Writes to CSV.
-			//	/// With a bit more work, this could become an extension method to dictionary
-			//	/// </summary>
-			//	/// <typeparam name="T"></typeparam>
-			//	/// <param name="filename">The filename.</param>
-			//	/// <param name="lines">The lines.</param>
-			//	/// <param name="header">The header.</param>
-			//	/// <param name="delimiter">The delimiter.</param>
-			//	private static void WriteToCsv<T>(string filename, IEnumerable<Dictionary<string, T>> lines, IList<string> header, string delimiter = ",")
-			//	{
-			//		using (TextWriter writer = new StreamWriter(filename))
-			//		{
-			//			// write header
-			//			for (int i = 0; i < header.Count; i++)
-			//			{
-			//				writer.Write("\"{0}\"{1}", header[i], (i < header.Count - 1) ? delimiter : "");
-			//			}
-			//			writer.WriteLine();
-
-			//			// write each line, in the order specified by the header values
-			//			foreach(var line in lines)
-			//			{
-			//				for (int i = 0; i < header.Count; i++)
-			//				{
-			//					if (line.ContainsKey(header[i]))
-			//						writer.Write("\"{0}\"{1}", line[header[i]], (i < header.Count - 1) ? delimiter : "");
-			//					else
-			//						writer.Write((i < header.Count - 1) ? delimiter : "");
-			//				}
-			//				writer.WriteLine();
-			//			}
-
-			//			writer.Close();
-			//		}
-			//	}
-
-			//	private class LineEntryCollection : IResultsSetInfo
-			//	{
-			//		protected List<IKeyValueInfoProvider> entries = new List<IKeyValueInfoProvider>();
-
-			//		IEnumerator<IKeyValueInfoProvider> IEnumerable<IKeyValueInfoProvider>.GetEnumerator()
-			//		{
-			//			return entries.GetEnumerator();
-			//		}
-
-			//		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-			//		{
-			//			return entries.GetEnumerator();
-			//		}
-			//	}
-
-			//	private class ObjResultsInfo : LineEntryCollection
-			//	{
-			//		private ObjectivesResultsCollection result;
-
-			//		public ObjResultsInfo(ObjectivesResultsCollection result)
-			//		{
-			//			this.result = result;
-
-			//			foreach(var scores in result.ScoresSet)
-			//			{
-			//				entries.Add(new ScoreCollectionInfo(scores, result.Tags));
-			//			}
-			//		}
-			//	}
-
-			//	private class DictLineInfo : IKeyValueInfoProvider
-			//	{
-			//		protected Dictionary<string, string> line;
-			//		public DictLineInfo() { }
-			//		public DictLineInfo(std::map<string, string> line) { this.line = new Dictionary<string, string>(line); }
-			//		public Dictionary<string, string> AsDictionary()
-			//		{
-			//			return line;
-			//		}
-			//	}
-
-			//	private class ScoreCollectionInfo : DictLineInfo
-			//	{
-			//		public ScoreCollectionInfo(ObjectiveScoreCollection scores, TagCollection tagCollection)
-			//		{
-			//			line = new Dictionary<string, string>();
-			//			HyperCube hyperCubeScores = (scores.SysConfiguration) as HyperCube;
-			//			if (hyperCubeScores != null)
-			//				foreach(var variable in hyperCubeScores.Variables)
-			//				line.Add(variable.Name, variable.Value.ToString());
-
-			//			foreach(var score in scores.Scores)
-			//				line.Add(score.Name, score.Value);
-
-			//			foreach(var tag in tagCollection.Tags)
-			//				line.Add(tag.Name, tag.Value);
-			//		}
-			//	}
-
-
-			//	private class SingleLineInfo : LineEntryCollection
-			//	{
-			//		public SingleLineInfo(std::map<string, string> dictionary)
-			//		{
-			//			this.entries.Add(new DictLineInfo(dictionary));
-			//		}
-			//	}
-
-			//	private static IResultsSetInfo createResultsSet(ILogInfo item, string resultsName = "")
-			//	{
-			//		IObjectiveScores[] arrayScores = item.Scores as IObjectiveScores[];
-			//		if (arrayScores != null && arrayScores.Length > 0)
-			//		{
-			//			std::map<string, string> tags = item.Tags;
-			//			var result = ConvertOptimizationResults.Convert(arrayScores, attributes: tags);
-			//			result.Name = resultsName;
-			//			return new ObjResultsInfo(result);
-			//		}
-			//		else
-			//			return new SingleLineInfo(item.Tags);
-			//	}
-
-
-			//	private class ZeroScores<TSysConfig> : IObjectiveScores<TSysConfig>
-			//		where TSysConfig : ISystemConfiguration
-			//{
-			//	public TSysConfig SystemConfiguration{ get; set; }
-
-			//	public IObjectiveScore GetObjective(int i)
-			//	{
-			//		throw new IndexOutOfRangeException();
-			//	}
-
-			//	public ISystemConfiguration GetSystemConfiguration()
-			//	{
-			//		return this.SystemConfiguration;
-			//	}
-
-			//	public int ObjectiveCount
-			//	{
-			//		get{ return 0; }
-			//	}
-			//}
-
 		};
 
 
@@ -366,7 +129,18 @@ namespace mhcpp
 		class SimpleLogger : public ILoggerMh < TSys >
 		{
 		public:
-			void Write(IHyperCube<double>* newPoint, const std::map<string, string>& ctags)
+
+			SimpleLogger()
+			{
+				// Nothing
+			}
+
+			~SimpleLogger()
+			{
+				// Nothing
+			}
+
+			void Write(TSys* newPoint, const std::map<string, string>& ctags)
 			{
 				Add(LogEntry(newPoint->GetValues(), ctags));
 			}
@@ -483,7 +257,7 @@ namespace mhcpp
 
 			ILoggerMh<TSys>* CreateNew()
 			{
-				return new SimpleLogger();
+				return new SimpleLogger<TSys>();
 			}
 
 		private:
@@ -522,6 +296,17 @@ namespace mhcpp
 					std::swap(this->data, src.data);
 					std::swap(this->tags, src.tags);
 				}
+
+				LogEntry()
+				{
+					// Nothing
+				}
+
+				~LogEntry()
+				{
+					// Nothing
+				}
+
 
 				LogEntry& operator=(const LogEntry& src)
 				{
@@ -637,6 +422,14 @@ namespace mhcpp
 		template<typename T>
 		class SubComplex
 		{
+		private:
+			size_t nbObjectiveEvaluations = 0;
+
+			void IncrementEvaluations(size_t n)
+			{
+				nbObjectiveEvaluations += n;
+			}
+
 		public:
 
 			SubComplex(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, int q, int alpha,
@@ -669,6 +462,11 @@ namespace mhcpp
 			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
 				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag(tuples), this->tags);
+			}
+
+			size_t EvaluationCount()
+			{
+				return nbObjectiveEvaluations;
 			}
 
 			void Evolve()
@@ -894,6 +692,7 @@ namespace mhcpp
 			FitnessAssignedScores<double, T> evaluateNewSet(T newPoint, const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, std::vector<FitnessAssignedScores<double, T>>& candidateSubcomplex)
 			{
 				IObjectiveScores<T> scoreNewPoint = evaluator->EvaluateScore(newPoint);
+				IncrementEvaluations(1);
 
 				std::vector<IObjectiveScores<T>> scores = FitnessAssignedScores<double, T>::GetScores(withoutWorstPoint);
 				scores.push_back(scoreNewPoint);
@@ -1047,6 +846,7 @@ namespace mhcpp
 				loggerWrite(msg, createTagConcat({ LoggerMhHelper::MkTuple("Message", msg), createTagCatComplexNo() }));
 				//return null;
 				auto newScore = evaluator->EvaluateScore(newPoint);
+				IncrementEvaluations(1);
 				loggerWrite(newScore, createTagConcat({
 					LoggerMhHelper::MkTuple("Message", "Adding a random point in hypercube"),
 					createTagCatComplexNo() }
@@ -1093,6 +893,7 @@ namespace mhcpp
 
 			std::vector<IObjectiveScores<T>> aggregatePoints(T newPoint, std::vector<IObjectiveScores<T>> withoutWorstPoint)
 			{
+				IncrementEvaluations(1);
 				return aggregate(evaluator->EvaluateScore(newPoint), withoutWorstPoint);
 			}
 
@@ -1137,6 +938,14 @@ namespace mhcpp
 			bool IsCancelled = false;
 
 			ITerminationCondition<T, ShuffledComplexEvolution<T>>* terminationCondition;
+			bool allowPrematureTermination = false;
+
+			size_t nbObjectiveEvaluations = 0;
+
+			void IncrementEvaluations(size_t n)
+			{
+				nbObjectiveEvaluations += n;
+			}
 
 		protected:
 
@@ -1171,7 +980,7 @@ namespace mhcpp
 
 			Complex(const std::vector<IObjectiveScores<T>>& scores, 
 				IObjectiveEvaluator<T>* evaluator, bool ownEvaluator, IRandomNumberGeneratorFactory<> rng, ICandidateFactory<T>* candidateFactory, bool ownCandidateFactory,
-				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition,
+				IFitnessAssignment<double, T> fitnessAssignment, ITerminationCondition<T, ShuffledComplexEvolution<T>>& terminationCondition, bool allowPrematureTermination=true,
 				ILoggerMh<T>* logger = nullptr, const std::map<string, string>& tags = std::map<string, string>(), int q=10, int alpha=2, int beta=3, double factorTrapezoidalPDF = -1,
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5) 
 				:
@@ -1185,6 +994,7 @@ namespace mhcpp
 				this->tags = tags;
 				this->rng = rng;
 				this->terminationCondition = &terminationCondition;
+				this->allowPrematureTermination = allowPrematureTermination;
 			}
 
 			virtual ~Complex()
@@ -1203,8 +1013,15 @@ namespace mhcpp
 					}
 			}
 
+			void AllowPrematureTermination(bool allow) { allowPrematureTermination = allow; }
+			bool AllowsPrematureTermination() { return allowPrematureTermination; }
+
 			bool IsFinished()
 			{
+				if (!allowPrematureTermination)
+					return false;
+				if (terminationCondition == nullptr)
+					return false;
 				if (!terminationCondition->IsThreadSafe())
 					return false;
 				return terminationCondition->IsFinished();
@@ -1213,6 +1030,11 @@ namespace mhcpp
 			bool IsCancelledOrFinished()
 			{
 				return (IsCancelled || IsFinished());
+			}
+
+			size_t EvaluationCount()
+			{
+				return nbObjectiveEvaluations;
 			}
 
 			void Evolve()
@@ -1227,6 +1049,7 @@ namespace mhcpp
 				{
 					SubComplex<T> subComplex(*this);
 					subComplex.Evolve();
+					IncrementEvaluations(subComplex.EvaluationCount());
 					this->scores = subComplex.WholePopulation();
 #ifdef _DEBUG
 					//CheckParameterFeasible(scores);
@@ -1259,12 +1082,14 @@ namespace mhcpp
 				const ICandidateFactorySeed<T>& candidateFactory,
 				const TerminationCondition& terminationCondition,
 				const SceParameters& sceParameters,
+				bool allowPrematureComplexTermination = true,
 				IRandomNumberGeneratorFactory<> rng = IRandomNumberGeneratorFactory<>(),
 				IFitnessAssignment<double, T> fitnessAssignment = IFitnessAssignment<double, T>(),
 				const std::map<string, string>& logTags = std::map<string, string>())
 			{
 				IObjectiveEvaluator<T>* pEval = evaluator.Clone();
 				Init(pEval, candidateFactory, terminationCondition,
+					allowPrematureComplexTermination,
 					rng,
 					fitnessAssignment,
 					sceParameters.P,
@@ -1285,11 +1110,13 @@ namespace mhcpp
 				const ICandidateFactorySeed<T>& candidateFactory,
 				const TerminationCondition& terminationCondition,
 				const SceParameters& sceParameters,
+				bool allowPrematureComplexTermination = true,
 				IRandomNumberGeneratorFactory<> rng = IRandomNumberGeneratorFactory<>(),
 				IFitnessAssignment<double, T> fitnessAssignment = IFitnessAssignment<double, T>(),
 				const std::map<string, string>& logTags = std::map<string, string>())
 			{
 				Init(evaluator, candidateFactory, terminationCondition,
+					allowPrematureComplexTermination,
 					rng,
 					fitnessAssignment,
 					sceParameters.P,
@@ -1387,6 +1214,11 @@ namespace mhcpp
 					logger->Reset();
 			}
 
+			void IncrementEvaluations(size_t n)
+			{
+				nbObjectiveEvaluations += n;
+			}
+
 			IOptimizationResults<T> Evolve()
 			{
 				Reset();
@@ -1395,6 +1227,7 @@ namespace mhcpp
 
 				std::vector<IObjectiveScores<T>> scores = EvaluateScores(initialisePopulation());
 				loggerWrite(scores, createSimpleMsg("Initial Population", "Initial Population"));
+				IncrementEvaluations(scores.size());
 				auto isFinished = terminationCondition.IsFinished();
 				if (isFinished)
 				{
@@ -1409,6 +1242,10 @@ namespace mhcpp
 				while (!isFinished && !isCancelled)
 				{
 					EvolveComplexes();
+					for (size_t i = 0; i < complexes.size(); i++)
+					{
+						IncrementEvaluations(complexes.at(i)->EvaluationCount());
+					}
 					string shuffleMsg = "Shuffling No " + std::to_string(CurrentShuffle);
 					std::vector<IObjectiveScores<T>> shufflePoints = AggregateComplexes();
 					loggerWrite(shufflePoints, createSimpleMsg(shuffleMsg, shuffleMsg));
@@ -1464,12 +1301,21 @@ namespace mhcpp
 				return maxDegreeOfParallelism;
 			}
 
+			size_t EvaluationCount()
+			{
+				return nbObjectiveEvaluations;
+			}
+
+			void AllowComplexPrematureTermination(bool allow) { allowPrematureComplexTermination = allow; }
+			bool AllowsComplexPrematureTermination() { return allowPrematureComplexTermination; }
+
 			// the next section has protected methods solely to facilitate unit testing.
 		protected:
 
 			void Reset()
 			{
 				isCancelled = false;
+				nbObjectiveEvaluations = 0;
 				terminationCondition.Reset();
 				ResetLog();
 				if (this->populationInitializer != nullptr) delete this->populationInitializer;
@@ -1544,6 +1390,7 @@ namespace mhcpp
 			void Init(IObjectiveEvaluator<T>* evaluator,
 				const ICandidateFactorySeed<T>& candidateFactory,
 				const TerminationCondition& terminationCondition,
+				bool allowPrematureComplexTermination,
 				IRandomNumberGeneratorFactory<> rng,
 				IFitnessAssignment<double, T> fitnessAssignment,
 				int p = 5,
@@ -1572,6 +1419,7 @@ namespace mhcpp
 				//if (this->terminationCondition == nullptr)
 				//	this->terminationCondition = new MaxShuffleTerminationCondition();
 				this->terminationCondition.SetEvolutionEngine(this);
+				this->allowPrematureComplexTermination = allowPrematureComplexTermination;
 				this->p = p;
 				this->pmin = pmin;
 				this->m = m;
@@ -1608,7 +1456,6 @@ namespace mhcpp
 						for (int k = 1; k <= m; k++)
 							sample.push_back(sortedScores[a + p * (k - 1)]);
 						std::vector<IObjectiveScores<T>> scores = getScores(sample);
-						//seed++; // TODO: check why this was done.
 						Complex<T>* complex = createComplex(scores);
 						complex->ComplexId = std::to_string(sce->CurrentShuffle) + "_" + std::to_string(a + 1);
 						complexes.push_back(complex);
@@ -1709,7 +1556,7 @@ namespace mhcpp
 
 					return new Complex<T>(scores, evaluator, ownedPtr, sce->rng,
 						candidateFactory, ownedCandidateFactory,
-						sce->fitnessAssignment, sce->terminationCondition,
+						sce->fitnessAssignment, sce->terminationCondition, sce->allowPrematureComplexTermination,
 						sce->logger, loggerTags, sce->q, sce->alpha, sce->beta, sce->trapezoidalPdfParam,
 						sce->options, sce->ReflectionRatio, sce->ContractionRatio);
 				}
@@ -1721,6 +1568,7 @@ namespace mhcpp
 			void MoveFrom(ShuffledComplexEvolution& src)
 			{
 				this->terminationCondition = std::move(src.terminationCondition);
+				this->allowPrematureComplexTermination = src.allowPrematureComplexTermination;
 				this->terminationCondition.SetEvolutionEngine(this);
 				this->p = std::move(src.p);
 				this->pmin = std::move(src.pmin);
@@ -1779,11 +1627,13 @@ namespace mhcpp
 
 			bool useMultiThreading = true;
 			Complexes complexes;
+			size_t nbObjectiveEvaluations = 0;
 			std::map<string, string> logTags;
 			ICandidateFactorySeed<T>* candidateFactory = nullptr;
 			IObjectiveEvaluator<T>* evaluator = nullptr;
 			ICandidateFactory<T>* populationInitializer = nullptr;
 			TerminationCondition terminationCondition;
+			bool allowPrematureComplexTermination = true;
 			IRandomNumberGeneratorFactory<> rng;
 			IFitnessAssignment<double, T> fitnessAssignment;
 			double trapezoidalPdfParam;
@@ -2314,6 +2164,47 @@ namespace mhcpp
 
 			double oldBest = std::numeric_limits<double>::quiet_NaN();
 			int converge = 0;
+		};
+
+
+		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
+		class MaxIterationTerminationCheck :
+			public TerminationCheck<TSys, TEngine>
+		{
+		private:
+			size_t maxIterations = 0;
+		public:
+			MaxIterationTerminationCheck(size_t maxIterations) :
+				TerminationCheck<TSys, TEngine>()
+			{
+				this->maxIterations = maxIterations;
+			}
+
+			virtual void Reset()
+			{
+				// Nothing done
+			}
+
+			virtual bool IsFinished(TEngine* engine)
+			{
+				return isFinished(engine);
+			}
+
+			virtual bool IsThreadSafe()
+			{
+				return true;
+			}
+
+			virtual TerminationCheck<TSys, TEngine>* Clone() const
+			{
+				return new MaxIterationTerminationCheck<TSys, TEngine>(this->maxIterations);
+			}
+
+		protected:
+			bool isFinished(TEngine* engine)
+			{
+				return (this->maxIterations <= engine->EvaluationCount());
+			}
 		};
 	}
 }
