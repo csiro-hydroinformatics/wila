@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<!--
+This file is a template from which you can set up a property file that matches the settings of your machine.
+-->
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <BoostPath>F:/local/boost/</BoostPath>
+    <BoostThreadPool>F:/src/github_jm/threadpool/</BoostThreadPool>
+  </PropertyGroup>
+  <ItemGroup>
+    <BuildMacro Include="BoostPath">
+      <Value>$(BoostPath)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="BoostThreadPool">
+      <Value>$(BoostThreadPool)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+  <PropertyGroup>
+    <BoostLibPath Condition="'$(Platform)'=='Win32'">$(BoostPath)/lib/32</BoostLibPath>
+    <BoostLibPath Condition="'$(Platform)'=='x64'">$(BoostPath)/lib/64</BoostLibPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <BuildMacro Include="BoostLibPath">
+      <Value>$(BoostLibPath)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
