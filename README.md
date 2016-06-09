@@ -29,9 +29,9 @@ You will need the following dependencies available:
 ### Windows
 
 * [Boost](http://www.boost.org/). You may choose to set up boost on your machine as you wish and sort out the compilation/path settings as you wish. The following is but one approach, is prescriptive, albeit one based on experience to limit some annoyances.
-** Download the Boost installers from e.g. [1.61](https://sourceforge.net/projects/boost/files/boost-binaries/1.61.0) at the time of writing. You will find files such as boost_1_61_0-msvc-12.0-64.exe (or more recent than "12.0" depending on the version of visual studio you use. Download for 64 and/or 32 bits.
-** Install at least one of the boost binary distro, for instance (and most likely) the 64 bit one (boost_1_61_0-msvc-12.0-64.exe). Let's assume for the rest of this document that you install to F:\local\boost_1_61_0\. 
-** We will create a subset of Boost in a folder F:\local\boost.  The following batch script creates it with enough such that the 'wila' unit tests can be compiled.
+ * Download the Boost installers from e.g. [1.61](https://sourceforge.net/projects/boost/files/boost-binaries/1.61.0) at the time of writing. You will find files such as boost_1_61_0-msvc-12.0-64.exe (or more recent than "12.0" depending on the version of visual studio you use. Download for 64 and/or 32 bits.
+ * Install at least one of the boost binary distro, for instance (and most likely) the 64 bit one (boost_1_61_0-msvc-12.0-64.exe). Let's assume for the rest of this document that you install to F:\local\boost_1_61_0\. 
+ * We will create a subset of Boost in a folder F:\local\boost.  The following batch script creates it with enough such that the 'wila' unit tests can be compiled.
 
 ```
 set BOOST_VERSION=1_61
