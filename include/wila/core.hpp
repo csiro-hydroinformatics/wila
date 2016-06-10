@@ -576,6 +576,7 @@ namespace mhcpp
 	template<typename T>
 	class IEvolutionEngine
 	{
+	public:
 		virtual IOptimizationResults<T> Evolve() = 0;
 	};
 

@@ -1236,7 +1236,7 @@ namespace mhcpp
 				}
 				CreateComplexes(scores);
 
-				CurrentShuffle = 1;
+				currentShuffle = 1;
 				isFinished = terminationCondition.IsFinished();
 				if (isFinished) logTerminationConditionMet();
 				while (!isFinished && !isCancelled)
@@ -1246,13 +1246,13 @@ namespace mhcpp
 					{
 						IncrementEvaluations(complexes.at(i)->EvaluationCount());
 					}
-					string shuffleMsg = "Shuffling No " + std::to_string(CurrentShuffle);
+					string shuffleMsg = "Shuffling No " + std::to_string(currentShuffle);
 					std::vector<IObjectiveScores<T>> shufflePoints = AggregateComplexes();
 					loggerWrite(shufflePoints, createSimpleMsg(shuffleMsg, shuffleMsg));
 					SetPopulationToShuffle(shufflePoints);
 					loggerWrite(PopulationAtShuffling[0], createSimpleMsg("Best point in shuffle", shuffleMsg));
 					ShuffleComplexes();
-					CurrentShuffle++;
+					currentShuffle++;
 					isFinished = terminationCondition.IsFinished();
 					if (isFinished) logTerminationConditionMet();
 				}
@@ -1457,7 +1457,7 @@ namespace mhcpp
 							sample.push_back(sortedScores[a + p * (k - 1)]);
 						std::vector<IObjectiveScores<T>> scores = getScores(sample);
 						Complex<T>* complex = createComplex(scores);
-						complex->ComplexId = std::to_string(sce->CurrentShuffle) + "_" + std::to_string(a + 1);
+						complex->ComplexId = std::to_string(sce->currentShuffle) + "_" + std::to_string(a + 1);
 						complexes.push_back(complex);
 					}
 				}
@@ -1543,7 +1543,7 @@ namespace mhcpp
 				Complex<T>* createComplex(std::vector<IObjectiveScores<T>> scores)
 				{
 					auto loggerTags = LoggerMhHelper::MergeDictionaries<>(sce->logTags,
-						LoggerMhHelper::CreateTag(LoggerMhHelper::MkTuple("CurrentShuffle", std::to_string(sce->CurrentShuffle))));
+						LoggerMhHelper::CreateTag(LoggerMhHelper::MkTuple("CurrentShuffle", std::to_string(sce->currentShuffle))));
 
 					// TODO: reconsider how to handle parallel executions.
 					bool ownedPtr = (sce->evaluator->IsCloneable());
@@ -1670,7 +1670,7 @@ namespace mhcpp
 			ShuffledComplexEvolution<T> algorithm;
 			bool IsFinished()
 			{
-			return algorithm.CurrentShuffle >= algorithm.numShuffle;
+			return algorithm.currentShuffle >= algorithm.numShuffle;
 			}
 
 			#region ITerminationCondition Members
@@ -1761,7 +1761,7 @@ namespace mhcpp
 			{
 			if (this->HasReachedMaxTime())
 			return true;
-			if (algorithm.numShuffle >= 0 && algorithm.CurrentShuffle >= algorithm.numShuffle)
+			if (algorithm.numShuffle >= 0 && algorithm.currentShuffle >= algorithm.numShuffle)
 			return true;
 			if (algorithm.PopulationAtShuffling == nullptr)
 			return false; // start of the algorithm.
@@ -1867,7 +1867,7 @@ namespace mhcpp
 
 			*/
 
-			int CurrentShuffle;
+			int currentShuffle;
 
 			int maxDegreeOfParallelism = 1;
 
@@ -1951,7 +1951,7 @@ namespace mhcpp
 
 			Complexes partition(const std::vector<FitnessAssignedScores<double, T>>& sortedScores)
 			{
-				if (CurrentShuffle > 0)
+				if (currentShuffle > 0)
 					if (this->pmin < this->p)
 						this->p = this->p - 1;
 				Complexes c = Complexes(sortedScores, this);
@@ -1971,7 +1971,7 @@ namespace mhcpp
 			Complexes partition(const std::vector<IObjectiveScores<T>>& scores)
 			{
 				auto sortedScores = sortByFitness(scores);
-				//logPoints( CurrentShuffle, sortedScores );
+				//logPoints( currentShuffle, sortedScores );
 				auto complexes = partition(sortedScores);
 				return complexes;
 			}
@@ -2029,6 +2029,9 @@ namespace mhcpp
 					LoggerMhHelper::MkTuple("Category", category) });
 			}
 
+			public: 
+				int CurrentShuffle() { return currentShuffle; }
+
 		};
 
 		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
@@ -2079,6 +2082,41 @@ namespace mhcpp
 		protected:
 			double maxHours;
 			boost::posix_time::ptime startTime;
+		};
+
+		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
+		class MaxNumberSceShuffles : public TerminationCheck<TSys, TEngine>
+		{
+		public:
+			MaxNumberSceShuffles(int maxShuffles)
+			{
+				this->maxShuffles = maxShuffles;
+				Reset();
+			}
+
+			virtual ~MaxNumberSceShuffles()
+			{
+			}
+
+			virtual void Reset()
+			{
+				// nothing
+			}
+
+			virtual bool IsFinished(TEngine* engine)
+			{
+				return (engine->CurrentShuffle() >= maxShuffles);
+			}
+
+			virtual bool IsThreadSafe() { return true; };
+
+			virtual TerminationCheck<TSys, TEngine>* Clone() const
+			{
+				auto result = new MaxNumberSceShuffles(this->maxShuffles);
+				return result;
+			}
+		protected:
+			int maxShuffles;
 		};
 
 		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
