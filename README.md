@@ -96,6 +96,10 @@ cmake .
 make package
 ```
 
+## Documentation
+
+You can find some introductory sample [in the doc folder, Getting Started](./doc/GettingStarted.md)
+
 ## Unit tests
 
 The step above will also try and build the test application. To run the tests:
