@@ -139,9 +139,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\..\..\src\sce.cpp" />
     <ClCompile Include="Introduction.cpp" />
   </ItemGroup>
