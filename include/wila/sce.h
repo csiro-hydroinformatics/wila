@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef _WIN32
+#define EXPORT_DLL_LIB __declspec(dllexport)
+#else
+#define EXPORT_DLL_LIB // nothing
+#endif
 
 typedef struct _SceParameters
 {
@@ -58,9 +63,9 @@ namespace mhcpp
 		//	static SceParameters CreateForProblemOfDimension(int n, int nshuffle);
 		//};
 
-		SceParameters CreateDefaultSceParams();
-		SceParameters AdjustSceParamsForProblemOfDimension(const SceParameters& sceParams, int n);
-		SceParameters CreateSceParamsForProblemOfDimension(int n, int nshuffle);
+		EXPORT_DLL_LIB SceParameters CreateDefaultSceParams();
+		EXPORT_DLL_LIB SceParameters AdjustSceParamsForProblemOfDimension(const SceParameters& sceParams, int n);
+		EXPORT_DLL_LIB SceParameters CreateSceParamsForProblemOfDimension(int n, int nshuffle);
 
 		enum SceOptions
 		{

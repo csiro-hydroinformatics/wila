@@ -3,8 +3,8 @@
 #include <random>
 #include <numeric>
 #include <set>
-//#include <boost/random.hpp>
-
+#include <boost/random.hpp>
+#include <boost/random/uniform_real_distribution.hpp>
 
 namespace mhcpp
 {
@@ -12,8 +12,14 @@ namespace mhcpp
 	{
 		using namespace std;
 
+		// In order to solve WIRADA-392 we cannot use the distributions in std::
+		// as they behave differently across compilers.
+		typedef boost::random::uniform_real_distribution<double> uniform_real_distribution_double;
+		typedef boost::random::discrete_distribution<int> discrete_distribution_int;
+		typedef boost::random::normal_distribution<double> normal_distribution_double;
 
-		typedef std::mt19937 default_wila_random_engine;
+		// using typedef for GCC backward compatibility - replace with using statements later.
+		typedef boost::mt19937 default_wila_random_engine;
 
 		template<typename RNG, typename Distribution>
 		class VariateGenerator
@@ -46,11 +52,7 @@ namespace mhcpp
 				this->_dist = std::move(vg._dist);
 			}
 
-			~VariateGenerator()
-			{
-				Clean<RNG>(this->_eng);
-			}
-
+		private:
 			template<typename RNG1>
 			void Clean(typename enable_if<std::is_pointer<RNG1>::value, RNG1>::type e)
 			{
@@ -59,6 +61,12 @@ namespace mhcpp
 
 			template<typename RNG1>
 			void Clean(typename enable_if<!std::is_pointer<RNG1>::value, RNG1>::type e) {}
+		public:
+
+			~VariateGenerator()
+			{
+				Clean<RNG>(this->_eng);
+			}
 
 			VariateGenerator& operator=(const VariateGenerator& vg)
 			{
@@ -95,6 +103,24 @@ namespace mhcpp
 				return _dist;
 			}
 
+			vector<result_type> Generate(size_t n, std::function<double(double)>& f)
+			{
+				vector<result_type> v(n);
+				auto g = [&]()
+				{
+					result_type x = (*this)();
+					return f(x);
+				};
+				std::generate(v.begin(), v.end(), g);
+				return v;
+			}
+
+			vector<result_type> Generate(size_t n)
+			{
+				auto identity[&](double x) { return x; }
+				return Generate(n, identity);
+			}
+
 		private:
 			RNG _eng;
 			Distribution _dist;
@@ -103,14 +129,26 @@ namespace mhcpp
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #if GCC_VERSION < 40800
-		typedef VariateGenerator < default_wila_random_engine, std::discrete_distribution<int> > RngInt;
-#else
-		template <typename RNG = default_wila_random_engine>
-		using RngInt = VariateGenerator < RNG, std::discrete_distribution<int> >;
+#define WILA_USE_TYPEDEF_RNG
 #endif
+#endif
+
+#ifdef WILA_USE_TYPEDEF_RNG
+		typedef VariateGenerator < default_wila_random_engine, mhcpp::random::discrete_distribution_int > RngInt;
+		typedef VariateGenerator < default_wila_random_engine, mhcpp::random::uniform_real_distribution_double > RngReal;
+		typedef VariateGenerator < default_wila_random_engine, mhcpp::random::normal_distribution_double > RngNorm;
 #else
+		/*template <typename RNG = default_wila_random_engine>
+		typedef VariateGenerator < RNG, mhcpp::random::discrete_distribution_int > RngInt;
+*/
 		template <typename RNG = default_wila_random_engine>
-		using RngInt = VariateGenerator < RNG, std::discrete_distribution<int> >;
+		using RngInt = VariateGenerator < RNG, mhcpp::random::discrete_distribution_int >;
+
+		template <typename RNG = default_wila_random_engine>
+		using RngReal = VariateGenerator < RNG, mhcpp::random::uniform_real_distribution_double >;
+
+		template <typename RNG = default_wila_random_engine>
+		using RngNorm = VariateGenerator < RNG, mhcpp::random::normal_distribution_double >;
 #endif
 
 		template<typename RNG = default_wila_random_engine>
@@ -188,7 +226,7 @@ namespace mhcpp
 					return seedEngine();
 				}
 
-				template<class DistributionType = std::uniform_real_distribution<double>>
+				template<class DistributionType = mhcpp::random::uniform_real_distribution_double>
 				static VariateGenerator<RngEngine*, DistributionType> * CreateVariateGenerator(RandomNumberGeneratorFactory<RngEngine>& rngf, DistributionType& dist)
 				{
 					return new VariateGenerator<RngEngine*, DistributionType>(rngf.CreateNewEngine(), dist);
@@ -289,13 +327,13 @@ namespace mhcpp
 			}
 
 			// http://stackoverflow.com/questions/7166799/specialize-template-function-for-template-class
-			template<class DistributionType = std::uniform_real_distribution<double>>
+			template<class DistributionType = mhcpp::random::uniform_real_distribution_double>
 			VariateGenerator<RNG, DistributionType> CreateVariateGenerator(DistributionType& dist, unsigned int seed) const
 			{
 				return VariateGenerator<RNG, DistributionType>(CreateNewEngine(seed), dist);
 			}
 
-			template<class DistributionType = std::uniform_real_distribution<double>>
+			template<class DistributionType = mhcpp::random::uniform_real_distribution_double>
 			VariateGenerator<RNG, DistributionType> CreateVariateGenerator(DistributionType& dist)
 			{
 				return VariateGenerator<RNG, DistributionType>(CreateNewEngine(), dist);
@@ -306,7 +344,7 @@ namespace mhcpp
 		RngInt<RNG> CreateTrapezoidalRng(size_t n, const RNG& generator, double trapezoidalFactor = -1)
 		{
 			std::vector<double> weights(n);
-			double m = n;
+			double m = (double)n;
 			double sumWeights = n*(n + 1) / 2.0;
 			double avgWeight = sumWeights / m;
 
@@ -315,7 +353,7 @@ namespace mhcpp
 				// default as per the original SCE paper. Note that we do not need
 				// to normalize: std::discrete_distribution takes care of it
 				for (size_t i = 1; i <= n; i++)
-					weights[i - 1] = (n + 1 - i);
+					weights[i - 1] = (double)(n + 1 - i);
 			}
 			else
 			{
@@ -326,11 +364,11 @@ namespace mhcpp
 					weights[i] = a * i + b;
 			}
 			// Would expect to be able to do:
-			// std::discrete_distribution<int> distribution(weights.begin(), weights.end());
+			// mhcpp::random::discrete_distribution_int distribution(weights.begin(), weights.end());
 			// but missing constructor in MS implementation. Using workaround derived from
 			// http://stackoverflow.com/questions/21959404/initialising-stddiscrete-distribution-in-vs2013
 			std::size_t i(0);
-			std::discrete_distribution<> distribution(weights.size(),
+			mhcpp::random::discrete_distribution_int distribution(weights.size(),
 				0.0, // dummy!
 				1.0, // dummy!
 				[&weights, &i](double)
@@ -339,7 +377,7 @@ namespace mhcpp
 				++i;
 				return w;
 			});
-			return VariateGenerator<default_wila_random_engine, std::discrete_distribution<int>>(generator, distribution);
+			return VariateGenerator<default_wila_random_engine, mhcpp::random::discrete_distribution_int>(generator, distribution);
 		}
 
 		template<typename X>

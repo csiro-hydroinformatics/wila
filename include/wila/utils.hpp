@@ -4,6 +4,7 @@
 #include <vector>
 #include <exception>
 #include <mutex>
+#include <atomic>
 #include <thread>
 #include <iostream>
 #include <algorithm>
@@ -63,7 +64,7 @@ namespace mhcpp
 				try {
 					f();
 				}
-				catch (const std::exception& e) {
+				catch (const std::exception&) {
 					threadExceptions.push_back(current_exception());
 				}
 			}
@@ -107,7 +108,7 @@ namespace mhcpp
 						cleanup[i]();
 					}
 				}
-				catch (const std::exception& e) {
+				catch (const std::exception&) {
 					if (threadExceptions.empty())
 						threadExceptions.push_back(current_exception());
 					else
@@ -161,11 +162,60 @@ namespace mhcpp
 		}
 
 		template<typename ElemType>
+		std::vector<double> Normalize(const std::vector<ElemType>& hist)
+		{
+			size_t n = hist.size();
+			std::vector<double> p(n);
+			ElemType total = std::accumulate(hist.begin(), hist.end(), 0);
+			for (size_t i = 0; i < n; ++i)
+				p[i] = (double)hist[i] / total;
+			return p;
+		}
+
+		template<typename T>
+		string ToScientificString(T value)
+		{
+			std::stringstream ss(stringstream::out);
+			ss.precision(6);
+			ss << std::scientific << value;
+			return ss.str();
+		}
+
+		template<typename T>
+		string ToString(const T& value)
+		{
+			return std::to_string(value);
+		}
+
+		template<>
+		inline string ToString<double>(const double& value)
+			// Note: one must use inline, otherwise users of this template only library 
+			// would probably have linker issues with this specialization.
+		{
+			return ToScientificString<double>(value);
+		}
+
+		template<>
+		inline string ToString<std::string>(const std::string& value)
+		{
+			return value;
+		}
+
+		template<typename ElemType>
+		void PrintVecLine(const std::vector<ElemType>& v, std::ostream& stream, const std::string& sep=",")
+		{
+			int n = v.size();
+			for (size_t i = 0; i < (n-1); ++i)
+				stream << ToString<ElemType>(v[i]) << sep;
+			stream << ToString<ElemType>(v[(n-1)]);
+		}
+
+		template<typename ElemType>
 		void PrintVec(const std::vector<ElemType>& hist, std::ostream& stream)
 		{
 			int n = hist.size();
 			for (size_t i = 0; i < n; ++i)
-				stream << i << ": " << std::to_string(hist[i]) << std::endl;
+				stream << i << ": " << ToString<ElemType>(hist[i]) << std::endl;
 		}
 
 		template<typename ElemType>
@@ -175,19 +225,22 @@ namespace mhcpp
 			size_t n = hist.size();
 			std::vector<std::string> s(n);
 			for (size_t i = 0; i < n; ++i)
-				s[i] = std::string(hist[i] * nstars / total, c);
+				s[i] = ToString<ElemType>(hist[i] * nstars / total, c);
 			PrintVec<ElemType>(s);
 		}
 
-		template<typename ElemType>
-		std::vector<double> Normalize(const std::vector<ElemType>& hist)
+		template < typename K, typename ElemType >
+		void PrintRow(const std::vector<K>& keys, std::map<K, std::vector<ElemType>> & sk, size_t i, std::ostream& stream, const std::string& sep=",")
 		{
-			size_t n = hist.size();
-			std::vector<double> p(n);
-			ElemType total = std::accumulate(hist.begin(), hist.end(), 0);
-			for (size_t i = 0; i < n; ++i)
-				p[i] = (double)hist[i] / total;
-			return p;
+			int n = keys.size();
+			string s;
+			for (size_t c = 0; c < (n-1); ++c)
+			{
+				s = keys[c];
+				stream << ToString<ElemType>(sk[s][i]) << sep;
+			}
+			s = keys[(n-1)];
+			stream << ToString<ElemType>(sk[s][i]);
 		}
 
 		template<typename ElemType>
@@ -215,5 +268,15 @@ namespace mhcpp
 				PrintVec(p, stream);
 			}
 		}
+
+		template<typename T>
+		T LogVarValue(T value, string name, std::ostream& stream = std::cout)
+		{
+#ifdef LOG_VALUE
+			stream << name << ": " << mhcpp::utils::ToString(value) << std::endl;
+#endif
+			return value;
+		}
+
 	}
 }

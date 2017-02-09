@@ -86,7 +86,7 @@ namespace mhcpp
 			string s;
 			auto vnames = GetVariableNames();
 			for (auto& v : vnames)
-				s += v + ":" + std::to_string(GetValue(v)) + ", ";
+				s += v + ":" + mhcpp::utils::ToString(GetValue(v)) + ", ";
 			return s;
 		}
 
@@ -201,11 +201,11 @@ namespace mhcpp
 		/// </summary>
 		virtual size_t ObjectiveCount() const { return this->objectives.size(); }
 
-		virtual std::string ObjectiveName(int i) const { return this->objectives[i].Name; }
+		virtual std::string ObjectiveName(size_t i) const { return this->objectives[i].Name; }
 
 		virtual vector<string> ObjectiveNames() const {
 			vector<string> result;
-			int n = ObjectiveCount();
+			size_t n = ObjectiveCount();
 			for (size_t i = 0; i < n; i++)
 				result.push_back(ObjectiveName(i));
 			return result;
@@ -300,7 +300,7 @@ namespace mhcpp
 			bool Maximizable;
 			string ToString() const
 			{
-				return Name + ":" + std::to_string(Value);
+				return Name + ":" + mhcpp::utils::ToString(Value);
 			}
 		};
 
@@ -308,6 +308,16 @@ namespace mhcpp
 		std::vector<ObjectiveValue> objectives;
 
 	};
+
+	namespace utils {
+		template<typename T>
+		void PrintTo(const std::vector<T>& scores, std::ostream& stream)
+		{
+			int n = scores.size();
+			for (size_t i = 0; i < n; ++i)
+				stream << i << ": " << scores[i].ToString() << std::endl;
+		}
+	}
 
 	template<typename T>
 	class IOptimizationResults // : public std::vector < IObjectiveScores<T> >
@@ -379,11 +389,8 @@ namespace mhcpp
 
 		void PrintTo(std::ostream& stream)
 		{
-			int n = size();
-			for (size_t i = 0; i < n; ++i)
-				stream << i << ": " << scores[i].ToString() << std::endl;
+			mhcpp::utils::PrintTo<IObjectiveScores<T>>(scores, stream);
 		}
-
 	};
 
 	template<typename TSysConfig>
@@ -517,8 +524,8 @@ namespace mhcpp
 
 		void SetSampler(unsigned int seed)
 		{
-			std::uniform_real_distribution<double> dist(0, 1);
-			sampler = rng.CreateVariateGenerator<std::uniform_real_distribution<double>>(dist, seed);
+			mhcpp::random::uniform_real_distribution_double dist(0, 1);
+			sampler = rng.CreateVariateGenerator<mhcpp::random::uniform_real_distribution_double>(dist, seed);
 		}
 
 		double Urand()
@@ -526,7 +533,7 @@ namespace mhcpp
 			return sampler();
 		}
 
-		VariateGenerator<std::mt19937, std::uniform_real_distribution<double>> sampler;
+		RngReal<> sampler;
 		IRandomNumberGeneratorFactory<> rng;
 		TSysConfig t;
 	};

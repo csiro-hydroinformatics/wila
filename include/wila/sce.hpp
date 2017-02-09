@@ -371,7 +371,7 @@ namespace mhcpp
 					}
 				}
 
-				int GetLength() { return data.size(); }
+				size_t GetLength() { return data.size(); }
 
 			private:
 				vector<map<string, double>> data;
@@ -395,6 +395,31 @@ namespace mhcpp
 		};
 
 	}
+
+	namespace utils {
+		template<typename TSys>
+		void PrintLoggerTo(mhcpp::logging::ILoggerMh<TSys>* logger, std::ostream& stream)
+		{
+			int n = logger->GetLength();
+			std::map<string, vector<string>> s = logger->GetStringData();
+			std::map<string, vector<double>> d = logger->GetNumericData();
+			const std::vector<string> sk = GetKeys<string,vector<string>>(s);
+			const std::vector<string> dk = GetKeys<string,vector<double>>(d);
+			std::string sep(",");
+			PrintVecLine<string>(sk, stream, sep);
+			stream << sep;
+			PrintVecLine<string>(dk, stream, sep);
+			stream << std::endl;
+			for (size_t i = 0; i < n; ++i)
+			{
+				PrintRow<string,string>(sk, s, i, stream, sep);
+				stream << sep;
+				PrintRow<string,double>(dk, d, i, stream, sep);
+				stream << std::endl;
+			}
+		}
+	}
+
 }
 
 namespace mhcpp
@@ -1043,7 +1068,7 @@ namespace mhcpp
 				//{
 				//	Thread.CurrentThread.Name = ComplexId;
 				//}
-				int a, b; // counters for alpha and beta parameters
+				int b; // counters for alpha and beta parameters
 				b = 0;
 				while (b < beta && !IsCancelledOrFinished())
 				{
@@ -1259,7 +1284,7 @@ namespace mhcpp
 				return packageResults(complexes);
 			}
 
-			size_t PopulationSize()
+			size_t PopulationSize() const
 			{
 				return (this->p * this->m);
 			}
@@ -1285,10 +1310,10 @@ namespace mhcpp
 				maxDegreeOfParallelism = std::min(GetMaxHardwareConcurrency(), std::max((size_t)1, maximum));
 			}
 
-			void SetMaxDegreeOfParallelismHardwareMinus(int freeCoresRemaining = 1)
+			void SetMaxDegreeOfParallelismHardwareMinus(size_t freeCoresRemaining = 1)
 			{
-				int hardwareMax = GetMaxHardwareConcurrency();
-				maxDegreeOfParallelism = std::max(1, hardwareMax - freeCoresRemaining);
+				size_t hardwareMax = GetMaxHardwareConcurrency();
+				maxDegreeOfParallelism = std::max<size_t>(1, hardwareMax - freeCoresRemaining);
 			}
 
 			size_t GetMaxHardwareConcurrency()
@@ -1867,9 +1892,9 @@ namespace mhcpp
 
 			*/
 
-			int currentShuffle;
+			size_t currentShuffle;
 
-			int maxDegreeOfParallelism = 1;
+			size_t maxDegreeOfParallelism = 1;
 
 			bool isCancelled = false;
 			//IComplex currentComplex;
@@ -2031,6 +2056,16 @@ namespace mhcpp
 
 			public: 
 				int CurrentShuffle() { return currentShuffle; }
+				// Method to facilitate testing: given the current state of the optimizer, create a population
+				std::vector<T> CreatePopulation() const
+				{
+					auto cf = candidateFactory->Clone();
+					auto gen = cf->Create();
+					std::vector<T> result = gen->CreateRandomCandidates(this->PopulationSize());
+					delete cf;
+					delete gen;
+					return result;
+				}
 
 		};
 

@@ -97,7 +97,7 @@ namespace mhcpp
 								result.push_back(r[j]);
 						}
 					}
-					catch (const std::exception& e) {
+					catch (const std::exception&) {
 						exceptions.push_back(current_exception());
 					}
 					for (size_t i = 0; i < taskPkgs.size(); i++)
