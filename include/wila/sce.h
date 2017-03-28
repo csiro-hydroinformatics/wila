@@ -51,22 +51,6 @@ namespace mhcpp
 {
 	namespace optimization
 	{
-		//class SceParameters
-		//{
-		//public:
-		//	SceParameters()
-		//	{
-		//		this->TrapezoidalDensityParameter = 1.9;
-		//		this->ReflectionRatio = -1.0;
-		//		this->ContractionRatio = 0.5;
-		//	}
-		//	static SceParameters CreateForProblemOfDimension(int n, int nshuffle);
-		//};
-
-		EXPORT_DLL_LIB SceParameters CreateDefaultSceParams();
-		EXPORT_DLL_LIB SceParameters AdjustSceParamsForProblemOfDimension(const SceParameters& sceParams, int n);
-		EXPORT_DLL_LIB SceParameters CreateSceParamsForProblemOfDimension(int n, int nshuffle);
-
 		enum SceOptions
 		{
 			None = 0x00,

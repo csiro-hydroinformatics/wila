@@ -429,14 +429,67 @@ namespace mhcpp
 		using namespace mhcpp::logging;
 		using namespace mhcpp::objectives;
 
-		//template<typename T>
-		//class BasicOptimizationResults : public IOptimizationResults<T>
-		//{
-		//public:
-		//	BasicOptimizationResults() {}
-		//	BasicOptimizationResults(const BasicOptimizationResults& src) {}
-		//	BasicOptimizationResults(const std::vector<IObjectiveScores<T>>& scores) {}
-		//};
+		template<typename S>
+		S CreateSceParamsForProblemOfDimension(int n, int nshuffle)
+		{
+			throw std::logic_error("Not Implemented")
+		}
+
+		template<typename S>
+		S CreateDefaultSceParams()
+		{
+			throw std::logic_error("Not Implemented")
+		}
+
+		template<>
+		inline SceParameters CreateDefaultSceParams<SceParameters>()
+		{
+			const int n = 4;
+			const int nshuffle = 40;
+
+			SceParameters result;
+			result.P = n + 2;
+			result.Pmin = n + 2;
+			result.M = 2 * n + 1;
+			result.Q = std::max(result.M - 2, 2);
+			result.Alpha = 1;
+			result.Beta = result.M;
+			result.NumShuffle = nshuffle;
+			result.TrapezoidalDensityParameter = 1.9;
+			result.ReflectionRatio = -1.0;
+			result.ContractionRatio = 0.5;
+
+			return result;
+		}
+
+		template<typename S>
+		S AdjustSceParamsForProblemOfDimension(const S& sceParams, int n)
+		{
+			throw std::logic_error("Not Implemented")
+		}
+
+		template<>
+		inline SceParameters AdjustSceParamsForProblemOfDimension<SceParameters>(const SceParameters& sceParams, int n)
+		{
+			if (n <= 0)
+				throw new std::logic_error("There must be at least one free parameter to calibrate");
+			SceParameters result = sceParams;
+			result.M = 2 * n + 1;
+			result.Q = std::max(result.M - 2, 2);
+			result.Beta = result.M;
+
+			return result;
+		}
+
+		template<>
+		inline SceParameters CreateSceParamsForProblemOfDimension<SceParameters>(int n, int nshuffle)
+		{
+			if (n <= 0)
+				throw new std::logic_error("There must be at least one free parameter to calibrate");
+			SceParameters result = CreateDefaultSceParams<SceParameters>();
+			result.NumShuffle = nshuffle;
+			return AdjustSceParamsForProblemOfDimension(result, n);
+		}
 
 		template<typename T>
 		class Complex;

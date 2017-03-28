@@ -124,7 +124,7 @@ CandidateFactorySeed<Hc> CreateCandidateFactorySeed(unsigned int seed, const Hc&
 
 Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
-	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
+	SceParameters sceParams = CreateSceParamsForProblemOfDimension<SceParameters>(5, 20);
 	// TODO: check above
 	sceParams.P = 5;
 	sceParams.Pmin = 3;
@@ -161,7 +161,7 @@ IObjectiveEvaluator<Hc> * ThrowsException::Clone() const
 
 Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
-	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
+	SceParameters sceParams = CreateSceParamsForProblemOfDimension<SceParameters>(5, 20);
 	// TODO: check above
 	sceParams.P = 5;
 	sceParams.Pmin = 3;
@@ -177,7 +177,7 @@ Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<Hc,
 
 Sce* CreateQuadraticGoalPtr(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
-	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
+	SceParameters sceParams = CreateSceParamsForProblemOfDimension<SceParameters>(5, 20);
 	// TODO: check above
 	sceParams.P = 5;
 	sceParams.Pmin = 3;

@@ -37,8 +37,8 @@
     <Import Project="$(UserProfile)/vcpp_config.props" Condition="exists('$(UserProfile)/vcpp_config.props')" />
   </ImportGroup>
   <PropertyGroup>
-    <IncludePath>$(LocalIncludePaths);$(IncludePath);../include</IncludePath>
-	<LibraryPath>$(OutDir);$(LocalLibraryPaths);$(LibraryPath)</LibraryPath>
+    <IncludePath>../include;$(LocalIncludePaths);$(IncludePath)</IncludePath>
+    <LibraryPath>$(OutDir);$(LocalLibraryPaths);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup />
   <ItemGroup>
@@ -48,11 +48,9 @@
     <ClInclude Include="..\include\wila\sce.h" />
     <ClInclude Include="..\include\wila\sce.hpp" />
     <ClInclude Include="..\include\wila\utils.hpp" />
-    <ClInclude Include=".\catch.hpp" />
     <ClInclude Include="common.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\sce.cpp" />
     <ClCompile Include="common.cpp" />
     <!-- <ClCompile Include="..\src\hypercube.cpp" /> -->
     <ClCompile Include="main.cpp" />
