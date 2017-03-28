@@ -1892,7 +1892,7 @@ namespace mhcpp
 
 			*/
 
-			size_t currentShuffle;
+			size_t currentShuffle = 0;
 
 			size_t maxDegreeOfParallelism = 1;
 
@@ -2211,7 +2211,7 @@ namespace mhcpp
 					oldBest = currentBest;
 					return false;
 				}
-				if (abs(currentBest - oldBest) <= abs(oldBest * tolerance))
+				if (std::abs(currentBest - oldBest) <= std::abs(oldBest * tolerance))
 				{
 					converge++;
 				}

@@ -3,14 +3,14 @@
 using namespace mhcpp;
 using namespace mhcpp::optimization;
 
-HyperCube<double> createTestHc(double a, double b, double aMin, double bMin, double aMax, double bMax) {
-	HyperCube<double> hc;
+Hc createTestHc(double a, double b, double aMin, double bMin, double aMax, double bMax) {
+	Hc hc;
 	hc.Define("a", aMin, aMax, a);
 	hc.Define("b", bMin, bMax, b);
 	return hc;
 }
 
-bool assertHyperCube(const HyperCube<double>& hc, double a, double b, double tolerance)
+bool assertHyperCube(const Hc& hc, double a, double b, double tolerance)
 {
 	return
 		(hc.Dimensions() == 2) &&
@@ -41,7 +41,7 @@ bool sameSets(const std::vector<std::string>& a, const std::vector<std::string>&
 	return true;
 }
 
-bool sameValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b)
+bool sameValues(const std::vector<std::string>& keys, const Hc& a, const Hc& b)
 {
 	for (auto& s : keys)
 		if (a.GetValue(s) != b.GetValue(s))
@@ -49,7 +49,7 @@ bool sameValues(const std::vector<std::string>& keys, const HyperCube<double>& a
 	return true;
 }
 
-bool sameMinValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b)
+bool sameMinValues(const std::vector<std::string>& keys, const Hc& a, const Hc& b)
 {
 	for (auto& s : keys)
 		if (a.GetMinValue(s) != b.GetMinValue(s))
@@ -57,7 +57,7 @@ bool sameMinValues(const std::vector<std::string>& keys, const HyperCube<double>
 	return true;
 }
 
-bool sameMaxValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b)
+bool sameMaxValues(const std::vector<std::string>& keys, const Hc& a, const Hc& b)
 {
 	for (auto& s : keys)
 		if (a.GetMaxValue(s) != b.GetMaxValue(s))
@@ -65,7 +65,7 @@ bool sameMaxValues(const std::vector<std::string>& keys, const HyperCube<double>
 	return true;
 }
 
-bool assertEqual(const HyperCube<double>& a, const HyperCube<double>& b)
+bool assertEqual(const Hc& a, const Hc& b)
 {
 	return
 		(a.Dimensions() == b.Dimensions()) &&
@@ -75,7 +75,7 @@ bool assertEqual(const HyperCube<double>& a, const HyperCube<double>& b)
 		(sameMaxValues(a.GetVariableNames(), a, b));
 }
 
-bool assertValuesNotEqual(const HyperCube<double>& a, const HyperCube<double>& b)
+bool assertValuesNotEqual(const Hc& a, const Hc& b)
 {
 	return
 		(a.Dimensions() == b.Dimensions()) &&
@@ -83,33 +83,57 @@ bool assertValuesNotEqual(const HyperCube<double>& a, const HyperCube<double>& b
 		(!sameValues(a.GetVariableNames(), a, b));
 }
 
-ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateCounterTermination(int maxCount)
+SceTc CreateCounterTermination(int maxCount)
 {
-	CounterTestFinished<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(maxCount);
-	ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition(c);
+	CounterTestFinished<Hc, Sce> c(maxCount);
+	SceTc terminationCondition(c);
 	return terminationCondition;
 }
 
-ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateMaxIterationTermination(int maxIterations)
+SceTc CreateMaxNumShuffle(int maxCount)
 {
-	MaxIterationTerminationCheck<HyperCube<double>, ShuffledComplexEvolution<HyperCube<double>>> c(maxIterations);
-	return ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition(c);
+	MaxNumberSceShuffles<Hc, Sce> c(maxCount);
+	SceTc terminationCondition(c);
+	return terminationCondition;
 }
 
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
+SceTc CreateMaxIterationTermination(int maxIterations)
+{
+	MaxIterationTerminationCheck<Hc, Sce> c(maxIterations);
+	return SceTc(c);
+}
+
+void BuildTestHc(Hc& goal)
+{
+	goal.Define("a", 1, 2, 1);
+	goal.Define("b", 3, 4, 3);
+}
+
+Hc CreateTestHc()
+{
+	Hc goal;
+	BuildTestHc(goal);
+	return goal;
+}
+
+CandidateFactorySeed<Hc> CreateCandidateFactorySeed(unsigned int seed, const Hc& hc)
+{
+	CandidateFactorySeed<Hc> seeding(seed, hc);
+	return seeding;
+}
+
+Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
 	// TODO: check above
 	sceParams.P = 5;
 	sceParams.Pmin = 3;
+	BuildTestHc(goal);
+	Hc hc = goal;
+	TopologicalDistance<Hc>  * evaluator = new TopologicalDistance<Hc>(goal);
+	CandidateFactorySeed<Hc> seeding(0, hc);
 
-	goal.Define("a", 1, 2, 1);
-	goal.Define("b", 3, 4, 3);
-	HyperCube<double> hc = goal;
-	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
-	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
-
-	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
+	Sce opt(evaluator, seeding, terminationCondition, sceParams);
 	return opt;
 }
 
@@ -117,10 +141,10 @@ ThrowsException::ThrowsException(const ThrowsException& src)
 {
 	this->goal = src.goal;
 }
-ThrowsException::ThrowsException(const HyperCube<double>& goal) { this->goal = goal; }
+ThrowsException::ThrowsException(const Hc& goal) { this->goal = goal; }
 ThrowsException::~ThrowsException() {}
 
-IObjectiveScores<HyperCube<double>> ThrowsException::EvaluateScore(const HyperCube<double>& systemConfiguration)
+IObjectiveScores<Hc> ThrowsException::EvaluateScore(const Hc& systemConfiguration)
 {
 	throw std::runtime_error("An error occured in ThrowsException::EvaluateScore");
 }
@@ -130,13 +154,12 @@ bool ThrowsException::IsCloneable() const
 	return true;
 }
 
-IObjectiveEvaluator<HyperCube<double>> * ThrowsException::Clone() const
+IObjectiveEvaluator<Hc> * ThrowsException::Clone() const
 {
 	return new ThrowsException(*this);
 }
 
-
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoalThrowsException(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
+Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
 	// TODO: check above
@@ -144,15 +167,15 @@ ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoalThrowsException(H
 	sceParams.Pmin = 3;
 	goal.Define("a", 1, 2, 1);
 	goal.Define("b", 3, 4, 3);
-	HyperCube<double> hc = goal;
+	Hc hc = goal;
 	ThrowsException* evaluator = new ThrowsException(goal);
-	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
+	CandidateFactorySeed<Hc> seeding(0, hc);
 
-	ShuffledComplexEvolution<HyperCube<double>> opt(evaluator, seeding, terminationCondition, sceParams);
+	Sce opt(evaluator, seeding, terminationCondition, sceParams);
 	return opt;
 }
 
-ShuffledComplexEvolution<HyperCube<double>>* CreateQuadraticGoalPtr(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition)
+Sce* CreateQuadraticGoalPtr(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension(5, 20);
 	// TODO: check above
@@ -161,11 +184,11 @@ ShuffledComplexEvolution<HyperCube<double>>* CreateQuadraticGoalPtr(HyperCube<do
 
 	goal.Define("a", 1, 2, 1);
 	goal.Define("b", 3, 4, 3);
-	HyperCube<double> hc = goal;
-	TopologicalDistance<HyperCube < double > >  * evaluator = new TopologicalDistance<HyperCube < double > >(goal);
-	CandidateFactorySeed<HyperCube < double >> seeding(0, hc);
+	Hc hc = goal;
+	TopologicalDistance<Hc >  * evaluator = new TopologicalDistance<Hc >(goal);
+	CandidateFactorySeed<Hc> seeding(0, hc);
 
-	return new ShuffledComplexEvolution<HyperCube<double>>(evaluator, seeding, terminationCondition, sceParams);
+	return new Sce(evaluator, seeding, terminationCondition, sceParams);
 }
 
 ThreeDimArray<int> * CreateRandValues(int seed, int numFactories, int numEngines, int numDraw)

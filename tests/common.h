@@ -8,22 +8,31 @@
 using namespace mhcpp;
 using namespace mhcpp::optimization;
 
-HyperCube<double> createTestHc(double a, double b, double aMin = 1, double bMin = 3, double aMax = 2, double bMax = 4);
-bool assertHyperCube(const HyperCube<double>& hc, double a, double b, double tolerance = 1.0e-9);
+using Hc = HyperCube<double>;
+using Sce = ShuffledComplexEvolution<Hc>;
+using SceTc = Sce::TerminationCondition;
+
+void BuildTestHc(Hc& goal);
+Hc CreateTestHc();
+CandidateFactorySeed<Hc> CreateCandidateFactorySeed(unsigned int seed, const Hc& hc);
+
+Hc createTestHc(double a, double b, double aMin = 1, double bMin = 3, double aMax = 2, double bMax = 4);
+bool assertHyperCube(const Hc& hc, double a, double b, double tolerance = 1.0e-9);
 bool isIn(const std::string& s, const std::vector<std::string>& b);
 bool allIn(const std::vector<std::string>& a, const std::vector<std::string>& b);
 bool sameSets(const std::vector<std::string>& a, const std::vector<std::string>& b);
-bool sameValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b);
-bool sameMinValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b);
-bool sameMaxValues(const std::vector<std::string>& keys, const HyperCube<double>& a, const HyperCube<double>& b);
-bool assertEqual(const HyperCube<double>& a, const HyperCube<double>& b);
-bool assertValuesNotEqual(const HyperCube<double>& a, const HyperCube<double>& b);
+bool sameValues(const std::vector<std::string>& keys, const Hc& a, const Hc& b);
+bool sameMinValues(const std::vector<std::string>& keys, const Hc& a, const Hc& b);
+bool sameMaxValues(const std::vector<std::string>& keys, const Hc& a, const Hc& b);
+bool assertEqual(const Hc& a, const Hc& b);
+bool assertValuesNotEqual(const Hc& a, const Hc& b);
 
-ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateCounterTermination(int maxCount);
-ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition CreateMaxIterationTermination(int maxIterations);
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoal(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double> > >&terminationCondition);
+SceTc CreateCounterTermination(int maxCount);
+SceTc CreateMaxIterationTermination(int maxIterations);
+SceTc CreateMaxNumShuffle(int maxCount);
+Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<Hc > >&terminationCondition);
 
-template < typename THC = HyperCube<double> >
+template < typename THC = Hc >
 typename ShuffledComplexEvolution<THC>::TerminationCondition CreateWallClockTermination(double seconds)
 // The 'typename' keyword above is necessary at least for visual studio
 // for the return type to be recognised as a type.
@@ -32,22 +41,22 @@ typename ShuffledComplexEvolution<THC>::TerminationCondition CreateWallClockTerm
 	return typename ShuffledComplexEvolution<THC>::TerminationCondition(c);
 }
 
-class ThrowsException : public IObjectiveEvaluator < HyperCube<double> >
+class ThrowsException : public IObjectiveEvaluator < Hc >
 {
 public:
 	ThrowsException(const ThrowsException& src);
-	ThrowsException(const HyperCube<double>& goal);
+	ThrowsException(const Hc& goal);
 	~ThrowsException();
 
-	IObjectiveScores<HyperCube<double>> EvaluateScore(const HyperCube<double>& systemConfiguration);
+	IObjectiveScores<Hc> EvaluateScore(const Hc& systemConfiguration);
 	bool IsCloneable() const;
-	IObjectiveEvaluator<HyperCube<double>> * Clone() const;
+	IObjectiveEvaluator<Hc> * Clone() const;
 private:
-	HyperCube<double> goal;
+	Hc goal;
 };
 
-ShuffledComplexEvolution<HyperCube<double>> CreateQuadraticGoalThrowsException(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition);
-ShuffledComplexEvolution<HyperCube<double>>* CreateQuadraticGoalPtr(HyperCube<double>& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<HyperCube<double>>>&terminationCondition);
+Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<HyperCube < double >, Sce>&terminationCondition);
+Sce* CreateQuadraticGoalPtr(Hc& goal, const ITerminationCondition<HyperCube < double >, Sce>&terminationCondition);
 
 template<typename T>
 bool requireEqual(const vector<T>& a, const vector<T>& b)
@@ -102,7 +111,7 @@ template<typename T>
 UniformRandomSamplingFactory<T> createTestUnifrand(int seed = 0)
 {
 	IRandomNumberGeneratorFactory<> rng(seed);
-	HyperCube<double> goal = createTestHc(1.5, 3.4);
+	Hc goal = createTestHc(1.5, 3.4);
 	UniformRandomSamplingFactory<T> prand(rng, goal);
 	return prand;
 }
@@ -112,7 +121,7 @@ std::vector < IObjectiveScores<T> >createTestScores(int m, int seed = 0)
 {
 	std::vector < IObjectiveScores<T> > scores;
 	auto prand = createTestUnifrand<T>();
-	HyperCube<double> goal = createTestHc(1.5, 3.4);
+	Hc goal = createTestHc(1.5, 3.4);
 	TopologicalDistance<T> evaluator(goal);
 
 	for (size_t i = 0; i < m; i++)

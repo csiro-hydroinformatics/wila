@@ -14,8 +14,21 @@
 #include<vld.h>
 #endif
 
+#define LOG_VALUE
 
 #include "common.h"
+
+#define REQUIRE_WITHIN_ABSOLUTE_TOLERANCE( expected, actual, delta) REQUIRE( (abs(expected - actual) < delta) )
+
+void checkLOneTolerance(Hc point, const std::map<string, double>& expected, double delta)
+{
+	for (const std::pair<string, double>& p : expected)
+	{
+		double actual = point.GetValue(p.first);
+		double expected = p.second;
+		REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(expected, actual, delta);
+	}
+}
 
 using namespace std;
 using namespace mhcpp;
@@ -23,11 +36,24 @@ using namespace mhcpp::random;
 using namespace mhcpp::optimization;
 using namespace mhcpp::utils;
 
+TEST_CASE("Number formating is scientific by default", "[utils]") {
+	REQUIRE(ToString(1.23456789) == "1.234568e+000");
+	REQUIRE(ToString(1.23456711) == "1.234567e+000");
+	REQUIRE(ToString(1.23) == "1.230000e+000");
+	REQUIRE(ToString(12.3456789) == "1.234568e+001");
+	REQUIRE(ToString(1.23456789e33) == "1.234568e+033");
+	REQUIRE(ToString(1.23456789e-33) == "1.234568e-033");
+	REQUIRE(ToString(-1.23456789e-33) == "-1.234568e-033");
+
+	REQUIRE(ToString(123456789) == "123456789");
+	REQUIRE(ToString(123456789123456789ul) == "123456789123456789");
+}
+
 TEST_CASE("Basic hypercubes", "[sysconfig]") {
 
 	GIVEN("A 2 dimensional hypercube")
 	{
-		HyperCube<double> hc = createTestHc(1.5, 3.3);
+		Hc hc = createTestHc(1.5, 3.3);
 		vector<string> keys;
 		keys.push_back("a");
 		keys.push_back("b");
@@ -66,17 +92,17 @@ TEST_CASE("Calculation of a centroid", "[sysconfig]") {
 
 	GIVEN("A population of hypercubes")
 	{
-		std::vector<HyperCube<double>> points;
+		std::vector<Hc> points;
 		points.push_back(createTestHc(1.1, 2.1));
 		points.push_back(createTestHc(1.2, 2.2));
-		auto c = HyperCube<double>::GetCentroid(points);
+		auto c = Hc::GetCentroid(points);
 		WHEN("Population of two points") {
 			THEN("Expected barycentre"){
 				REQUIRE(assertHyperCube(c, 1.15, 2.15));
 			}
 		}
 		points.push_back(createTestHc(1.9, 2.6));
-		c = HyperCube<double>::GetCentroid(points);
+		c = Hc::GetCentroid(points);
 		WHEN("Population of three points") {
 			THEN("Expected barycentre"){
 				REQUIRE(assertHyperCube(c, 1.4, 2.3));
@@ -89,14 +115,14 @@ TEST_CASE("Basic objective evaluator", "[objectives]") {
 
 	GIVEN("Single-objective calculator, L2 distance")
 	{
-		HyperCube<double> hc = createTestHc(1.5, 3.3);
-		HyperCube<double> goal = createTestHc(1, 3);
+		Hc hc = createTestHc(1.5, 3.3);
+		Hc goal = createTestHc(1, 3);
 
 		//IObjectiveEvaluator<HyperCube < double > >* evaluator = new TopologicalDistance<HyperCube < double > >(goal);
 		TopologicalDistance<HyperCube < double > > evaluator(goal);
 
 		WHEN("Evaluating distance") {
-			IObjectiveScores<HyperCube<double>> scores = evaluator.EvaluateScore(hc);
+			IObjectiveScores<Hc> scores = evaluator.EvaluateScore(hc);
 			THEN("Gets one objective value with expected value"){
 				REQUIRE(scores.ObjectiveCount() == 1);
 				REQUIRE(scores.ObjectiveName(0) != "");
@@ -108,14 +134,14 @@ TEST_CASE("Basic objective evaluator", "[objectives]") {
 
 TEST_CASE("Sort objective scores", "[objectives]") {
 
-	GIVEN("Single-objective calculator, L2 distance")
+	GIVEN("Single-objective calculator, L2 (Euclidian) distance")
 	{
-		HyperCube<double> goal = createTestHc(0,0);
+		Hc goal = createTestHc(0,0);
 
 		//IObjectiveEvaluator<HyperCube < double > >* evaluator = new TopologicalDistance<HyperCube < double > >(goal);
 		TopologicalDistance<HyperCube < double > > evaluator(goal);
 
-		vector<HyperCube<double>> points({
+		vector<Hc> points({
 			createTestHc(1, 2),
 			createTestHc(10, 10),
 			createTestHc(3, 3),
@@ -140,25 +166,41 @@ TEST_CASE("Sort objective scores", "[objectives]") {
 TEST_CASE("RNG basics", "[rng]") {
 	// These test cases were largely written for chasing up the bug
 	// https://jira.csiro.au/browse/WIRADA-341
-	GIVEN("An std::mt19937")
+
+
+	// https://jira.csiro.au/browse/WIRADA-392
+	// Windows output, run with #define LOG_VALUE   as of 2016-08-09
+//first number sampled : 3499211612
+//firstInt : 581869302
+//secondInt : 2412496532
+//x1[0] : 2991312382
+//x2[0] : 1068398491
+//nextSeed = factory.PeekNext() : 2991312382
+//nextInitSeed = factory.PeekNext() : 3062119789
+
+	GIVEN("An mhcpp::random::default_wila_random_engine")
 	{
 		unsigned int seed = 123;
-		std::mt19937 stdRng;
+		mhcpp::random::default_wila_random_engine stdRng;
 		WHEN("The first number is sampled from it") {
 			THEN("It is not the seed that was used")
 			{
-				REQUIRE_FALSE(stdRng() == seed);
+				unsigned int myValue = LogVarValue<unsigned int>(stdRng(), "first number sampled");
+				REQUIRE(myValue == 3499211612);
+				REQUIRE_FALSE(myValue == seed);
 			}
 		}
 		WHEN("another engine is created, seeded with the sampled value out of the first") {
 			THEN("The first value sampled from each of the two engine differs")
 			{
 				unsigned int seedNewRng = stdRng();				
-				std::mt19937 stdRng2(seedNewRng);
-				unsigned int firstInt = stdRng();
-				unsigned int secondInt = stdRng2();
+				mhcpp::random::default_wila_random_engine stdRng2(seedNewRng);
+				unsigned int firstInt =  LogVarValue<unsigned int>(stdRng() , "firstInt");
+				unsigned int secondInt = LogVarValue<unsigned int>(stdRng2(), "secondInt");
 				REQUIRE_FALSE(firstInt == seedNewRng);
 				REQUIRE_FALSE(firstInt == secondInt);
+				REQUIRE(firstInt == 581869302);
+				REQUIRE(secondInt == 2412496532);
 			}
 		}
 	}
@@ -171,10 +213,14 @@ TEST_CASE("RNG basics", "[rng]") {
 			{
 				REQUIRE_FALSE(factory.Equals(f2));
 				auto x1 = factory.Next(10);
+				LogVarValue<unsigned int>(x1[0], "x1[0]");
 				auto x2 = f2.Next(10);
+				LogVarValue<unsigned int>(x2[0], "x2[0]");
 				REQUIRE(x1[0] != x1[1]);
 				for (size_t i = 0; i < 10; i++)
 					REQUIRE(x1[i] != x2[i]);
+				REQUIRE(x1[0] == 2991312382);
+				REQUIRE(x2[0] == 1068398491);
 			}
 		}
 		WHEN("A copy is created by assignment") {
@@ -193,11 +239,13 @@ TEST_CASE("RNG basics", "[rng]") {
 			IRandomNumberGeneratorFactory<> f2;
 			THEN("The initial factory changes seed after CreateNew, if we peek")
 			{
-				auto nextSeed = factory.PeekNext();
+				auto nextSeed = LogVarValue<unsigned int>(factory.PeekNext(), "nextSeed=factory.PeekNext()");
 				REQUIRE(nextSeed == factory.PeekNext());
 				f2 = factory.CreateNew();
-				auto nextInitSeed = factory.PeekNext();
+				auto nextInitSeed = LogVarValue<unsigned int>(factory.PeekNext(), "nextInitSeed=factory.PeekNext()");
 				REQUIRE_FALSE(nextSeed == nextInitSeed);
+				REQUIRE(nextSeed == 2991312382);
+				REQUIRE(nextInitSeed == 3062119789);
 				AND_THEN("The first seed produced by each of these rng factories differs")
 				{
 					REQUIRE(factory.PeekNext() != f2.PeekNext());
@@ -225,8 +273,8 @@ TEST_CASE("RNG memory management", "[memory]") {
 	rngtype f3 = factory->CreateNew();
 	REQUIRE(initialCount + 3 == count());
 	
-	std::uniform_real_distribution<double> dist(0, 1);
-	auto rng = f3.CreateVariateGenerator<std::uniform_real_distribution<double>>(dist, 333);
+	mhcpp::random::uniform_real_distribution_double dist(0, 1);
+	auto rng = f3.CreateVariateGenerator<mhcpp::random::uniform_real_distribution_double>(dist, 333);
 	REQUIRE(initialCount + 4 == count());
 	delete factory;
 	REQUIRE(initialCount + 3 == count());
@@ -243,7 +291,7 @@ TEST_CASE("RNG factories and resulting RNG engines", "[rng]") {
 		int numDraw = 10;
 
 		vector<vector<IRandomNumberGeneratorFactory<>>> rngs(numFactories);
-		vector<vector<std::mt19937>> rngEngines(numFactories);
+		vector<vector<mhcpp::random::default_wila_random_engine>> rngEngines(numFactories);
 			
 		IRandomNumberGeneratorFactory<> rngf(seed);
 		for (int i = 0; i < numFactories; i++)
@@ -293,7 +341,6 @@ TEST_CASE("RNG factories and resulting RNG engines", "[rng]") {
 	}
 }
 
-
 TEST_CASE("RNG sequences", "[rng]") {
 	GIVEN("A random integer generator IRandomNumberGeneratorFactory<>")
 	{
@@ -337,9 +384,10 @@ TEST_CASE("RNG sequences", "[rng]") {
 		delete v4;
 	}
 }
+
 TEST_CASE("trapezoidal, discrete RNG to sample from a population of points, as used to create the sub-complexes", "[rng]")
 {
-	std::mt19937 generator(234);
+	mhcpp::random::default_wila_random_engine generator(234);
 	const int ncandidates = 10;
 	RngInt<> rng = CreateTrapezoidalRng(ncandidates, generator);
 
@@ -364,15 +412,15 @@ TEST_CASE("trapezoidal, discrete RNG to sample from a population of points, as u
 }
 
 TEST_CASE("URS RNG basics", "[rng]") {
-	HyperCube<double> hc;
+	Hc hc;
 	hc.Define("a", 1, 2, 1.5);
 	hc.Define("b", 3, 4, 3.3);
 	GIVEN("An uniform random sampler")
 	{
-		auto rng = UniformRandomSamplingFactory<HyperCube<double>>(IRandomNumberGeneratorFactory<>(), hc);
+		auto rng = UniformRandomSamplingFactory<Hc>(IRandomNumberGeneratorFactory<>(), hc);
 
 		WHEN("Creating a random point with default template") {
-			HyperCube<double> p = rng.CreateRandomCandidate();
+			Hc p = rng.CreateRandomCandidate();
 			THEN("Feasible parameter space is the same as the template, but values are different from template")
 			{
 				REQUIRE(p.GetMinValue("a") == 1.0);
@@ -484,7 +532,7 @@ TEST_CASE("Complex for SCE, single objective", "[optimizer]") {
 	WHEN("Building and running a complex")
 	{
 		auto unif = createTestUnifrand<T>(421);
-		ShuffledComplexEvolution<HyperCube<double>>::TerminationCondition terminationCondition;
+		ShuffledComplexEvolution<Hc>::TerminationCondition terminationCondition;
 		terminationCondition.RequireEngine = false;
 
 		//Complex<T> cplx_noargs;
@@ -510,8 +558,8 @@ TEST_CASE("SCE basic port", "[optimizer]") {
 	GIVEN("A 2D Hypercube")
 	{
 		auto terminationCondition = CreateCounterTermination(100);
-		HyperCube<double> goal;
-		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		Hc goal;
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
 		WHEN("optimizing single-thread") {
 			opt.UseMultiThreading(false);
 			auto results = opt.Evolve();
@@ -536,8 +584,8 @@ TEST_CASE("exception handling is thread-safe", "[optimizer]") {
 	GIVEN("An objective calculation that triggers an std::exception")
 	{
 		auto terminationCondition = CreateCounterTermination(100);
-		HyperCube<double> goal;
-		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoalThrowsException(goal, terminationCondition);
+		Hc goal;
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoalThrowsException(goal, terminationCondition);
 		WHEN("optimizing multi-threaded") {
 			opt.UseMultiThreading(true);
 			string msg;
@@ -559,8 +607,8 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 	GIVEN("A runtime length termination condition")
 	{
 		auto terminationCondition = CreateWallClockTermination<>(5.0);
-		HyperCube<double> goal;
-		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		Hc goal;
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
 
 		WHEN("") {
 			auto results = opt.Evolve();
@@ -574,10 +622,11 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 	GIVEN("A max nb iteration termination condition")
 	{
 		auto terminationCondition = CreateMaxIterationTermination(1000);
-		HyperCube<double> goal;
+		Hc goal;
 
-		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
 		WHEN("Complexes are allowed to check on termination criterion, and the criterion is thread safe") {
+			REQUIRE(terminationCondition.IsThreadSafe());
 			opt.AllowComplexPrematureTermination(true);
 			auto results = opt.Evolve();
 			REQUIRE(results.size() > 0);
@@ -587,6 +636,7 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 			}
 		}
 		WHEN("Complexes are not allowed to check on termination criterion, and the criterion is thread safe") {
+			REQUIRE(terminationCondition.IsThreadSafe());
 			opt.AllowComplexPrematureTermination(false);
 			auto results = opt.Evolve();
 			REQUIRE(results.size() > 0);
@@ -618,6 +668,7 @@ TEST_CASE("Memory management", "[memory]") {
 }
 
 TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
+	// This test checks that an segfault issue reported running on Linux is not present.
 	auto terminationCondition = CreateWallClockTermination<>(14.4);
 	using T = HyperCube < double >;
 	T goal;
@@ -629,7 +680,7 @@ TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
 		REQUIRE(iterNum == iterNum); // hack to check via cmd line in verbose mode.
 		int hcNewLoopCount = T::NumInstances();
 		REQUIRE(hcInitialCount == hcNewLoopCount);
-		ShuffledComplexEvolution<HyperCube<double>> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
 		size_t nCores = opt.GetMaxHardwareConcurrency();
 		size_t nThreads = std::min((size_t)3, nCores - 1);
 		opt.SetMaxDegreeOfParallelism(nThreads);
@@ -637,6 +688,138 @@ TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
 		REQUIRE(results.size() > 0);
 		auto first = results[0];
 		REQUIRE(first.ObjectiveCount() == 1);
+	}
+}
+
+std::map<string, double> mkPt (double a, double b) {
+	return std::map<string, double>({ { "a", a },{ "b", b } });
+};
+
+TEST_CASE("SCE behavior is identical across OSes", "[rng]") {
+	GIVEN("A 2D Hypercube")
+	{
+		auto terminationCondition = CreateMaxNumShuffle(1);
+		Hc goal;
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		double delta = 1e-5;
+
+		WHEN("Initializing the population of points") {
+			auto points = opt.CreatePopulation();
+			// mhcpp::utils::PrintTo<Hc>(scores, std::cout);
+			// as of 2016-08-09 on Windows:
+			// > testwila.cmd "SCE behavior is identical across OSes"
+			// 0: a:1.947638, b: 3.883420,
+			// 10: a: 1.448429, b: 3.749307,
+			// 54: a: 1.895343, b: 3.158786,
+			checkLOneTolerance(points[0], mkPt(1.947638, 3.883420), delta);
+			checkLOneTolerance(points[10], mkPt(1.448429, 3.749307), delta);
+			checkLOneTolerance(points[54], mkPt(1.895343, 3.158786), delta);
+		}
+		WHEN("optimizing single-thread") {
+			opt.UseMultiThreading(false);
+			opt.SetLogger();
+			auto results = opt.Evolve();
+			//results.PrintTo(std::cout);
+			// as of 2016-08-09 on Windows:
+			//0: L2 distance:0.098551, a:1.074382, b:3.064649,
+			//10: L2 distance:1.207733, a:1.968343, b:3.721755,
+			//54: L2 distance:1.311178, a:1.874004, b:3.977397,
+			std::vector<Hc> points = IObjectiveScores<Hc>::GetSystemConfigurations(results);
+#ifdef LOG_VALUE
+			mhcpp::utils::PrintTo< Hc >(points, std::cout);
+			mhcpp::logging::ILoggerMh< Hc >* logger = opt.GetLogger();
+			mhcpp::utils::PrintLoggerTo< Hc >(logger, std::cout);
+#endif
+			checkLOneTolerance(points[0], mkPt(1.074382, 3.064649), delta);
+			checkLOneTolerance(points[10], mkPt(1.968343, 3.721755), delta);
+			checkLOneTolerance(points[54], mkPt(1.874004, 3.977397), delta);
+		}
+		WHEN("optimizing multi-threaded") {
+			opt.UseMultiThreading(true);
+			opt.SetLogger();
+			auto results = opt.Evolve();
+			auto points = IObjectiveScores<Hc>::GetSystemConfigurations(results);
+#ifdef LOG_VALUE
+			mhcpp::utils::PrintTo< Hc >(points, std::cout);
+			mhcpp::logging::ILoggerMh< Hc >* logger = opt.GetLogger();
+			mhcpp::utils::PrintLoggerTo< Hc >(logger, std::cout);
+#endif
+			checkLOneTolerance(points[0], mkPt(1.074382, 3.064649), delta);
+			checkLOneTolerance(points[10], mkPt(1.968343, 3.721755), delta);
+			checkLOneTolerance(points[54], mkPt(1.874004, 3.977397), delta);
+		}
+	}
+}
+
+TEST_CASE("Distribution sampling is deterministic and identical across platforms", "[rng]") {
+	mhcpp::random::uniform_real_distribution_double dist(0, 1);
+	mhcpp::random::default_wila_random_engine eng(342);
+	auto e1 = LogVarValue<unsigned int>(eng(), "e1=eng()");
+	auto v = LogVarValue<double>(dist(eng), "v=dist(eng)");
+//e1=eng(): 279320595
+//v=dist(eng): 0.985974
+	REQUIRE(e1 == 279320595);
+	REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(.985974, v, 1e-5);
+}
+
+TEST_CASE("Candidate factory seed deterministic across platforms", "[rng]") {
+	GIVEN("a IRandomNumberGeneratorFactory")
+	{
+//> testwila.cmd "Candidate factory seed deterministic across platforms"
+//peek1=f.PeekNext(): 2357136044
+//peek2=f.PeekNext(): 2357136044
+//peek3=f.PeekNext(): 2546248239
+//e1=engine(): 2714253906
+//e2=engine(): 1225636010
+//e3=engineSeeded(): 3008354540
+//e4=engineSeeded(): 440739714
+//seedVg=f.PeekNext(): 3071714933
+//v=vg(): 0.759871
+		IRandomNumberGeneratorFactory<> f(0);
+		auto peek1 = LogVarValue<unsigned int>(f.PeekNext(), "peek1=f.PeekNext()");
+		auto peek2 = LogVarValue<unsigned int>(f.PeekNext(), "peek2=f.PeekNext()");
+		IRandomNumberGeneratorFactory<> f2 = f.CreateNew();
+		auto peek3 = LogVarValue<unsigned int>(f.PeekNext(), "peek3=f.PeekNext()");
+		auto engine = f.CreateNewEngine();
+		auto e1 = LogVarValue<unsigned int>(engine(), "e1=engine()");
+		auto e2 = LogVarValue<unsigned int>(engine(), "e2=engine()");
+		auto engineSeeded = IRandomNumberGeneratorFactory<>::CreateNewEngine(666);
+		auto e3 = LogVarValue<unsigned int>(engineSeeded(), "e3=engineSeeded()");
+		auto e4 = LogVarValue<unsigned int>(engineSeeded(), "e4=engineSeeded()");
+		mhcpp::random::uniform_real_distribution_double dist(0, 1);
+		auto seedVg = LogVarValue<unsigned int>(f.PeekNext(), "seedVg=f.PeekNext()");
+		auto vg = f.CreateVariateGenerator<>(dist);
+		auto v = LogVarValue<double>(vg(), "v=vg()");
+		REQUIRE(peek1 == 2357136044);
+		REQUIRE(peek1 == peek2);
+		REQUIRE(peek3 == 2546248239);
+		REQUIRE(e1 == 2714253906);
+		REQUIRE(e2 == 1225636010);
+		REQUIRE(e3 == 3008354540);
+		REQUIRE(e4 == 440739714);
+		REQUIRE(seedVg == 3071714933);		
+		REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(0.759871, v, 1e-5);
+	}
+	GIVEN("A candidate factory seed")
+	{
+		Hc hc = CreateTestHc();
+		auto c = CreateCandidateFactorySeed(0, hc);
+		double delta = 1e-5;
+
+		WHEN("Initializing the population of points") {
+			auto cf = c.Create();
+			auto points = cf->CreateRandomCandidates(3);
+			//mhcpp::utils::PrintTo<Hc>(points, std::cout);
+			delete cf;
+			// as of 2016-08-09 on Windows:
+//> testwila.cmd "Candidate factory seed deterministic across platforms"
+//0: a:1.947638, b:3.883420,
+//1: a:1.061278, b:3.673165,
+//2: a:1.173725, b:3.378660,			
+			checkLOneTolerance(points[0], mkPt(1.947638, 3.883420), delta);
+			checkLOneTolerance(points[1], mkPt(1.061278, 3.673165), delta);
+			checkLOneTolerance(points[2], mkPt(1.173725, 3.378660), delta);
+		}
 	}
 }
 
