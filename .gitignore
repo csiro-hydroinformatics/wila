@@ -35,3 +35,4 @@ tests/Release/*
 *.tlog
 *.sdf
 *.idb
+*.db
