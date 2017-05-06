@@ -117,7 +117,7 @@ namespace mhcpp
 
 			vector<result_type> Generate(size_t n)
 			{
-				auto identity[&](double x) { return x; }
+				auto identity = [&](double x) { return x; };
 				return Generate(n, identity);
 			}
 

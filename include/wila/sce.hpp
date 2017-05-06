@@ -432,13 +432,13 @@ namespace mhcpp
 		template<typename S>
 		S CreateSceParamsForProblemOfDimension(int n, int nshuffle)
 		{
-			throw std::logic_error("Not Implemented")
+			throw std::logic_error("Not Implemented");
 		}
 
 		template<typename S>
 		S CreateDefaultSceParams()
 		{
-			throw std::logic_error("Not Implemented")
+			throw std::logic_error("Not Implemented");
 		}
 
 		template<>
@@ -465,7 +465,7 @@ namespace mhcpp
 		template<typename S>
 		S AdjustSceParamsForProblemOfDimension(const S& sceParams, int n)
 		{
-			throw std::logic_error("Not Implemented")
+			throw std::logic_error("Not Implemented");
 		}
 
 		template<>

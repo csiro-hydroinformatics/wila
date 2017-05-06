@@ -19,7 +19,6 @@ PROJECT(${this_target})
 ## section: source files
 # Add your source files here (one file per line), please SORT in alphabetical order for future maintenance
 SET (${this_target}_SOURCE_FILES
-    src/sce.cpp
 )
 
 ## section: header files
@@ -79,7 +78,8 @@ LIST(APPEND ${this_target}_SOURCE_FILES ${${this_target}_HEADER_FILES})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 ## section: add target
-ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
+# ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
+add_library(${this_target} INTERFACE)
 ADD_EXECUTABLE(wila_tests tests/common.cpp tests/main.cpp)
 TARGET_LINK_LIBRARIES(wila_tests
     pthread
@@ -90,10 +90,18 @@ TARGET_LINK_LIBRARIES(wila_tests
 
 # Files to be installed - used by packaging stuff below
 INSTALL(FILES ${${this_target}_HEADER_FILES} DESTINATION include/wila)
-INSTALL(TARGETS ${this_target}
-  LIBRARY DESTINATION lib
-)
-INSTALL(TARGETS wila_tests DESTINATION bin)
+
+########### Add uninstall target ###############
+# uninstall target
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY)
+
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+########### End uninstall target ###############
+
 
 # Packages - currently just an RPM
 set(CPACK_PACKAGE_VERSION ${VERSION})
