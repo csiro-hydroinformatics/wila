@@ -41,7 +41,6 @@ INCLUDE_DIRECTORIES(
 SET (${this_target}_SOURCE_FILES
     common.cpp
     main.cpp
-    ../src/sce.cpp
 )
 
 ## section: header files
