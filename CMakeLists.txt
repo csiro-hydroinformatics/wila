@@ -24,6 +24,7 @@ SET (${this_target}_SOURCE_FILES
 ## section: header files
 # Add your header files here(one file per line), please SORT in alphabetical order for future maintenance!
 SET(${this_target}_HEADER_FILES
+    include/wila/common.h
     include/wila/core.hpp
     include/wila/evaluations.hpp
     include/wila/random.hpp
