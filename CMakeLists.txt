@@ -59,7 +59,7 @@ find_package(TBB REQUIRED)
 #find_library (TBB_LIBRARIES NAMES tbb)
 message ("The path to the Thread Building Blocks (tbb) library is ${TBB_LIBRARIES}")
 
-find_path(THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp PATHS threadpool ../threadpool)
+find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
 
 INCLUDE_DIRECTORIES(
     ./include
