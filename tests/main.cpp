@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
-#include "catch.hpp"
+#include "catch/catch.hpp"
 
 
 //#define WILA_USE_VLD
