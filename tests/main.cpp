@@ -823,3 +823,15 @@ TEST_CASE("Candidate factory seed deterministic across platforms", "[rng]") {
 	}
 }
 
+TEST_CASE("Test templated generic utilities for maps and vectors", "[utils]")
+{
+	std::map < string, string > dict = {
+		{string("a"), string("A")},
+		{string("b"), string("B")},
+		{string("c"), string("C")}
+	};
+	vector<string> sub = { "b" };
+	auto res = mhcpp::utils::Subset(sub, dict);
+	REQUIRE(res.size() == 1);
+	REQUIRE(mhcpp::utils::HasKey(res, "b"));
+}

@@ -153,6 +153,37 @@ namespace mhcpp
 			return keyValue.first;
 		}
 
+		template<typename K = string, typename V = string>
+		std::map<K, V> MergeDictionaries(const std::map<K, V>& first, const std::map<K, V>& second)
+		{
+			std::map<K, V> result(first);
+			for (auto& x : second)
+			{
+				result[x.first] = x.second;
+			}
+			return result;
+		}
+
+		template<typename K = string, typename V = string>
+		std::map<K, V> Subset(const std::vector<K>& keys, const std::map<K, V>& dict, bool allowMissing = false)
+		{
+			std::map<K, V> result;
+			for (const auto& k : keys)
+			{
+				if (!HasKey(dict, k) && !allowMissing)
+					throw std::logic_error("std::map subsetting key not found: " + k);
+				else
+					result.emplace(k, V(dict.at(k)));
+			}
+			return result;
+		}
+
+		template<typename K = string, typename V = string>
+		bool HasKey(const std::map<K, V>& dict, const string& key)
+		{
+			return (dict.find(key) != dict.end());
+		}
+
 		template<typename K, typename V>
 		const std::vector<K> GetKeys(const std::map<K, V>& aMap)
 		{
