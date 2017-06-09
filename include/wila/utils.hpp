@@ -147,6 +147,14 @@ namespace mhcpp
 			return(sa == sb);
 		}
 
+		template<typename T>
+		bool IsSubset(const std::vector<T>& tested, const std::vector<T>& container)
+		{
+			std::set<T> sa(tested.begin(), tested.end());
+			std::set<T> sb(container.begin(), container.end());
+			return(sa <= sb);
+		}
+
 		template<typename K, typename V>
 		const K& GetKey(const std::pair<K, V>& keyValue)
 		{
