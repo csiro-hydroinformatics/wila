@@ -267,19 +267,19 @@ TEST_CASE("RNG memory management", "[memory]") {
 	int initialCount = count();
 	using rngtype = IRandomNumberGeneratorFactory<TestRandomEngine>;
 	rngtype* factory = new rngtype(123);
-	REQUIRE(initialCount + 1 == count());
+	REQUIRE((initialCount + 1) == count());
 	rngtype* f2 = new rngtype(456);
-	REQUIRE(initialCount + 2 == count());
+	REQUIRE((initialCount + 2) == count());
 	rngtype f3 = factory->CreateNew();
-	REQUIRE(initialCount + 3 == count());
+	REQUIRE((initialCount + 3) == count());
 	
 	mhcpp::random::uniform_real_distribution_double dist(0, 1);
 	auto rng = f3.CreateVariateGenerator<mhcpp::random::uniform_real_distribution_double>(dist, 333);
-	REQUIRE(initialCount + 4 == count());
+	REQUIRE((initialCount + 4) == count());
 	delete factory;
-	REQUIRE(initialCount + 3 == count());
+	REQUIRE((initialCount + 3) == count());
 	delete f2;
-	REQUIRE(initialCount + 2 == count());
+	REQUIRE((initialCount + 2) == count());
 }
 
 TEST_CASE("RNG factories and resulting RNG engines", "[rng]") {
