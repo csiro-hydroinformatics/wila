@@ -91,6 +91,7 @@ TARGET_LINK_LIBRARIES(wila_tests
 
 # Files to be installed - used by packaging stuff below
 INSTALL(FILES ${${this_target}_HEADER_FILES} DESTINATION include/wila)
+INSTALL(TARGETS wila_tests RUNTIME DESTINATION bin)
 
 ########### Add uninstall target ###############
 # uninstall target
