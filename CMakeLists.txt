@@ -68,6 +68,7 @@ INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
+    ${catch_INCLUDE_DIRS}
 )
 
 ## section: precompiled header
