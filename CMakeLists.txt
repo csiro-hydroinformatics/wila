@@ -64,7 +64,6 @@ find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
 INCLUDE_DIRECTORIES(
     ./include
     ./include/wila
-    ../include
     ${Boost_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
