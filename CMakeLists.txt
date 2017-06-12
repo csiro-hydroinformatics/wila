@@ -79,8 +79,13 @@ LIST(APPEND ${this_target}_SOURCE_FILES ${${this_target}_HEADER_FILES})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 ## section: add target
-# ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
-add_library(${this_target} INTERFACE)
+IF (AS_SHARED_LIB)
+    ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
+    set_target_properties(${this_target} PROPERTIES LINKER_LANGUAGE CXX)
+ELSE()
+    add_library(${this_target} INTERFACE)
+ENDIF()
+
 ADD_EXECUTABLE(wila_tests tests/common.cpp tests/main.cpp)
 TARGET_LINK_LIBRARIES(wila_tests
     pthread
