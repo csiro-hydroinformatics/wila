@@ -37,13 +37,13 @@ using namespace mhcpp::optimization;
 using namespace mhcpp::utils;
 
 TEST_CASE("Number formating is scientific by default", "[utils]") {
-	REQUIRE(ToString(1.23456789) == "1.234568e+000");
-	REQUIRE(ToString(1.23456711) == "1.234567e+000");
-	REQUIRE(ToString(1.23) == "1.230000e+000");
-	REQUIRE(ToString(12.3456789) == "1.234568e+001");
-	REQUIRE(ToString(1.23456789e33) == "1.234568e+033");
-	REQUIRE(ToString(1.23456789e-33) == "1.234568e-033");
-	REQUIRE(ToString(-1.23456789e-33) == "-1.234568e-033");
+	REQUIRE(ToString(1.23456789) == "1.234568e+00");
+	REQUIRE(ToString(1.23456711) == "1.234567e+00");
+	REQUIRE(ToString(1.23) == "1.230000e+00");
+	REQUIRE(ToString(12.3456789) == "1.234568e+01");
+	REQUIRE(ToString(1.23456789e33) == "1.234568e+33");
+	REQUIRE(ToString(1.23456789e-33) == "1.234568e-33");
+	REQUIRE(ToString(-1.23456789e-33) == "-1.234568e-33");
 
 	REQUIRE(ToString(123456789) == "123456789");
 	REQUIRE(ToString(123456789123456789ul) == "123456789123456789");
