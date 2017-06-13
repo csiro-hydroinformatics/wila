@@ -173,6 +173,12 @@ namespace mhcpp
 		}
 
 		template<typename K = string, typename V = string>
+		bool HasKey(const std::map<K, V>& dict, const string& key)
+		{
+			return (dict.find(key) != dict.end());
+		}
+
+		template<typename K = string, typename V = string>
 		std::map<K, V> Subset(const std::vector<K>& keys, const std::map<K, V>& dict, bool allowMissing = false)
 		{
 			std::map<K, V> result;
@@ -184,12 +190,6 @@ namespace mhcpp
 					result.emplace(k, V(dict.at(k)));
 			}
 			return result;
-		}
-
-		template<typename K = string, typename V = string>
-		bool HasKey(const std::map<K, V>& dict, const string& key)
-		{
-			return (dict.find(key) != dict.end());
 		}
 
 		template<typename K, typename V>
