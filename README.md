@@ -96,6 +96,14 @@ cmake .
 make package
 ```
 
+Alternately build as a shared library:
+
+```sh
+cmake -DAS_SHARED_LIB=True .
+make
+make install
+```
+
 ## Documentation
 
 You can find some introductory sample [in the doc folder, Getting Started](./doc/GettingStarted.md)

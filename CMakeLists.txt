@@ -64,10 +64,10 @@ find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
 INCLUDE_DIRECTORIES(
     ./include
     ./include/wila
-    ../include
     ${Boost_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
+    ${catch_INCLUDE_DIRS}
 )
 
 ## section: precompiled header
@@ -79,8 +79,13 @@ LIST(APPEND ${this_target}_SOURCE_FILES ${${this_target}_HEADER_FILES})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 ## section: add target
-# ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
-add_library(${this_target} INTERFACE)
+IF (AS_SHARED_LIB)
+    ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
+    set_target_properties(${this_target} PROPERTIES LINKER_LANGUAGE CXX)
+ELSE()
+    add_library(${this_target} INTERFACE)
+ENDIF()
+
 ADD_EXECUTABLE(wila_tests tests/common.cpp tests/main.cpp)
 TARGET_LINK_LIBRARIES(wila_tests
     pthread
@@ -91,6 +96,7 @@ TARGET_LINK_LIBRARIES(wila_tests
 
 # Files to be installed - used by packaging stuff below
 INSTALL(FILES ${${this_target}_HEADER_FILES} DESTINATION include/wila)
+INSTALL(TARGETS wila_tests RUNTIME DESTINATION bin)
 
 ########### Add uninstall target ###############
 # uninstall target
