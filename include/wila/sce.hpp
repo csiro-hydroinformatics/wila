@@ -6,6 +6,7 @@
 #include <mutex>
 #include "sce.h"
 #include "core.hpp"
+#include "utils.hpp"
 #include "evaluations.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
@@ -86,18 +87,13 @@ namespace mhcpp
 			template<typename K = string, typename V = string>
 			static std::map<K, V> MergeDictionaries(const std::map<K, V>& first, const std::map<K, V>& second)
 			{
-				std::map<K, V> result(first);
-				for (auto& x : second)
-				{
-					result[x.first] = x.second;
-				}
-				return result;
+				return mhcpp::utils::MergeDictionaries(first, second);
 			}
 
 			template<typename K = string, typename V = string>
 			static bool HasKey(const std::map<K, V>& m, const string& key)
 			{
-				return (m.find(key) != m.end());
+				return mhcpp::utils::HasKey(m, key);
 			}
 
 			static std::map<string, string> CreateTag(const std::initializer_list<std::tuple<string, string>>& tuples)
