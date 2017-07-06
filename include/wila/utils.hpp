@@ -35,10 +35,6 @@ using namespace Concurrency;
 using namespace tbb;
 #endif
 
-#ifdef _WIN32
-	//_set_output_format(_TWO_DIGIT_EXPONENT);
-#endif
-
 using namespace std;
 
 namespace mhcpp
