@@ -451,7 +451,7 @@ namespace mhcpp
 			result.Alpha = 1;
 			result.Beta = result.M;
 			result.NumShuffle = nshuffle;
-			result.TrapezoidalDensityParameter = 1.9;
+			result.TrapezoidalDensityParameter = 1.0;
 			result.ReflectionRatio = -1.0;
 			result.ContractionRatio = 0.5;
 
