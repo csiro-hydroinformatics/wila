@@ -8,6 +8,7 @@
 #include <functional>
 #include "random.hpp"
 #include "utils.hpp"
+#include "constructs.hpp"
 
 using namespace std;
 
@@ -990,7 +991,7 @@ namespace mhcpp
 			return mhcpp::utils::GetKeys(def);
 		}
 		void Define(string name, T min, T max, T value) {
-			def[name] = MMV(name, min, max, value);
+			def[name] = mhcpp::parameters::ParameterInterval<double>(name, min, max, value);
 		}
 		size_t Dimensions() const { return def.size(); }
 		T GetValue(const string& variableName) const { return def.at(variableName).Value; }
@@ -1028,19 +1029,7 @@ namespace mhcpp
 
 
 	private:
-		class MMV
-		{
-		public:
-			MMV(){}
-			MMV(string name, double min, double max, double value) :
-				Name(name), Max(max), Min(min), Value(value)
-			{
-			}
-			string Name;
-			double Min, Max, Value;
-			bool IsFeasible() const { return (Value >= Min) && (Value <= Max); }
-		};
-		std::map<string, MMV> def;
+		std::map<string, mhcpp::parameters::ParameterInterval<double>> def;
 	};
 
 	template<typename TSysConf>
