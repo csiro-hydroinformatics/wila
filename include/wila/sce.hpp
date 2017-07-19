@@ -8,6 +8,7 @@
 #include "core.hpp"
 #include "utils.hpp"
 #include "evaluations.hpp"
+#include "multithreading.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include "boost/threadpool.hpp"

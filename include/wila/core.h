@@ -83,7 +83,7 @@ namespace mhcpp
 			string s;
 			auto vnames = GetVariableNames();
 			for (auto& v : vnames)
-				s += v + ":" + mhcpp::utils::ToString(GetValue(v)) + ", ";
+				s += v + ":" + std::to_string(GetValue(v)) + ", ";
 			return s;
 		}
 
