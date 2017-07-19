@@ -4,7 +4,7 @@
 #include <cinterop/common_c_interop.h>
 #include <cinterop/c_cpp_interop.hpp>
 #include <cinterop/object_lifetimes.hpp>
-#include "core.hpp"
+#include "core.h"
 
 namespace cinterop
 {
@@ -96,7 +96,7 @@ namespace mhcpp
 			{
 				for (size_t i = 0; i < ps.size; i++)
 				{
-					const auto& pd = parameters[i];
+					const auto& pd = ps.parameters[i];
 					Names.push_back(string(pd.name));
 					Mins.push_back(pd.minimum);
 					Maxs.push_back(pd.maximum);
