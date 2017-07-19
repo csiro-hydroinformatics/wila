@@ -25,12 +25,19 @@ SET (${this_target}_SOURCE_FILES
 # Add your header files here(one file per line), please SORT in alphabetical order for future maintenance!
 SET(${this_target}_HEADER_FILES
     include/wila/common.h
+    include/wila/constructs.hpp
+    include/wila/core.h
     include/wila/core.hpp
     include/wila/evaluations.hpp
+    include/wila/interop_c_cpp.hpp
+    include/wila/interop_c_structs.h
+    include/wila/interop_rcpp.hpp
+    include/wila/multithreading.hpp
     include/wila/random.hpp
-    include/wila/sce.hpp
     include/wila/sce.h
+    include/wila/sce.hpp
     include/wila/utils.hpp
+    include/wila/wrappers.hpp
 )
 
 # Use the FindBoost macro to find boost.
