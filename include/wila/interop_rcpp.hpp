@@ -4,6 +4,8 @@
 
 #include <Rcpp.h>
 #include <wila/sce.h>
+#include <wila/interop_c_structs.h>
+#include <wila/interop_c_cpp.hpp>
 
 
 #define SCE_ALPHA  "alpha"
@@ -28,7 +30,6 @@ using namespace Rcpp;
 namespace mhcpp {
 	namespace interop {
 		namespace r {
-
 			template <typename V=NumericVector>
 			SceParameters ToSceParameters(const V& sceParams)
 			{
@@ -58,33 +59,7 @@ namespace mhcpp {
 				values = Rcpp::as<NumericVector>(parameterSpecs[PARAMETERIZER_VALUE_ITEM_NAME]);
 			}
 
-			struct ParameterDefinition
-			{
-				string Name;
-				double Min, Max, Value;
-			};
-
-			template<typename P= ParameterDefinition>
-			class ParameterSetDefinition
-			{
-			public:
-				ParameterSetDefinition() {}
-				ParameterSetDefinition(const std::vector<P>& definitions)
-				{
-					for (size_t i = 0; i < definitions.size(); i++)
-					{
-						auto& pd = definitions[i];
-						Names.push_back(pd.Name);
-						Mins.push_back(pd.Min);
-						Maxs.push_back(pd.Max);
-						Values.push_back(pd.Value);
-					}
-				}
-				std::vector<string> Names;
-				std::vector<double> Mins, Maxs, Values;
-			};
-
-			template<typename P = ParameterSetDefinition<>>
+			template<typename P = mhcpp::interop::ParameterSetDefinition<>>
 			DataFrame HypercubeToDataFrame(P& pdef)
 			{
 				return Rcpp::DataFrame::create(

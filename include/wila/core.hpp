@@ -141,12 +141,21 @@ namespace mhcpp
 		virtual ~ICandidateFactorySeed() {/*Nothing*/};
 	};
 
+	class SetOfScores
+	{
+	public:
+		virtual size_t ObjectiveCount() const = 0;
+		virtual std::string ObjectiveName(size_t i) const = 0;
+		virtual double Value(size_t i) const = 0;
+	};
+
 	/// <summary>
 	/// A generic interface for one or more objective scores derived from the evaluation of a candidate system configuration.
 	/// </summary>
 	/// <typeparam name="TSysConf">The type of the system configuration</typeparam>
 	template<typename TSysConf>
-	class IObjectiveScores //: public IBaseObjectiveScores //where TSysConf : ISystemConfiguration
+	class IObjectiveScores : //: public IBaseObjectiveScores //where TSysConf : ISystemConfiguration
+		public SetOfScores
 	{
 	public:
 		IObjectiveScores(const TSysConf& sysConfig, const string& name, double value, bool maximizable = false)
@@ -212,9 +221,9 @@ namespace mhcpp
 			return result;
 		}
 
-		virtual double Value(int i) const { return objectives[i].Value; } //= 0;
+		virtual double Value(size_t i) const { return objectives[i].Value; } //= 0;
 
-		virtual bool Maximizable(int i) const { return objectives[i].Maximizable; } //= 0;
+		virtual bool Maximizable(size_t i) const { return objectives[i].Maximizable; } //= 0;
 
 		string ToString() const
 		{
@@ -888,7 +897,7 @@ namespace mhcpp
 		{
 			std::vector<FitnessAssignedScores<TVal, TSys>> result;
 			// for (auto& s : scores) // <== causes a debug assertion failure with VS - "vector iterator not incrementable"
-			for (int i = 0; i < scores.size(); i++)
+			for (size_t i = 0; i < scores.size(); i++)
 			{
 				if (scores[i].ObjectiveCount() != 1)
 					throw std::logic_error("Fitness score currently must be derived exactly from one objective");
