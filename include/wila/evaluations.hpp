@@ -4,6 +4,7 @@
 #include <boost/threadpool.hpp>
 #include <thread>
 #include "core.hpp"
+#include "multithreading.hpp"
 #include "boost/threadpool.hpp"
 
 namespace mhcpp
