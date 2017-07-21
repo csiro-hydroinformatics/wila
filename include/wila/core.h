@@ -89,7 +89,7 @@ namespace mhcpp
 
 		virtual std::map<string, double> GetValues() const
 		{
-			map<string, double> s;
+			std::map<string, double> s;
 			auto vnames = GetVariableNames();
 			for (auto& v : vnames)
 				s[v] = GetValue(v);
