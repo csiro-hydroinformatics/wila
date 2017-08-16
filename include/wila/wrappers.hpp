@@ -8,10 +8,54 @@
 #include <functional>
 #include "core.hpp"
 
-using namespace std;
 
 namespace mhcpp
 {
+	namespace types
+	{
+		using std::string;
+		template<typename Type, typename BaseType>
+		static Type* As(BaseType* ptr)
+		{
+			return dynamic_cast<Type*>(ptr);
+		}
+		template<typename Type, typename BaseType>
+		static bool Is(BaseType* ptr)
+		{
+			return (As<Type>(ptr) != nullptr);
+		}
+
+		template<typename Type, typename BaseType>
+		static Type* StrictlyAs(BaseType* ptr, const string& errormsg = string(""), const string& nullargmsg = string(""))
+		{
+			if (ptr == nullptr)
+			{
+				string msgnull;
+				if (nullargmsg == "")
+					msgnull = "StrictlyAs: input pointer must not be null";
+				else
+					msgnull = nullargmsg;
+				throw std::logic_error(msgnull);
+			}
+			Type* res = dynamic_cast<Type*>(ptr);
+			if (res == nullptr)
+			{
+				string msg;
+				if (errormsg == "")
+					msg = string("StrictlyAs: input pointer ") +
+					typeid(BaseType*).name() +
+					" points to object of type " +
+					typeid(*ptr).name() +
+					" which cannot be addressed by pointer of type " +
+					typeid(Type*).name();
+				else
+					msg = errormsg;
+				throw std::logic_error(msg);
+			}
+			return res;
+		}
+	}
+
 	namespace wrappers
 	{
 		template<typename HyperCubeParameterizer>
@@ -83,9 +127,9 @@ namespace mhcpp
 			static HypercubeWrapper WrapIfRequired(HyperCubeParameterizer * hcPtr)
 			{
 				if (hcPtr == nullptr)
-					swift::exceptions::SwiftExceptions::ThrowInvalidArgument("WrapIfRequired: pointer to hypercube must not be null");
-				if (TypeHelper::Is<HypercubeWrapper, HyperCubeParameterizer>(hcPtr))
-					return *(TypeHelper::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr));
+					throw std::logic_error("WrapIfRequired: pointer to hypercube must not be null");
+				if (mhcpp::types::Is<HypercubeWrapper, HyperCubeParameterizer>(hcPtr))
+					return *(mhcpp::types::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr));
 				else
 					return HypercubeWrapper(*hcPtr);
 			}
@@ -93,16 +137,16 @@ namespace mhcpp
 			static HypercubeWrapper* WrapIfRequiredNewPtr(HyperCubeParameterizer * hcPtr)
 			{
 				if (hcPtr == nullptr)
-					swift::exceptions::SwiftExceptions::ThrowInvalidArgument("WrapIfRequired: pointer to hypercube must not be null");
-				if (TypeHelper::Is<HypercubeWrapper, HyperCubeParameterizer>(hcPtr))
-					return (TypeHelper::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr));
+					throw std::logic_error("WrapIfRequired: pointer to hypercube must not be null");
+				if (mhcpp::types::Is<HypercubeWrapper, HyperCubeParameterizer>(hcPtr))
+					return (mhcpp::types::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr));
 				else
 					return new HypercubeWrapper(*hcPtr);
 			}
 
 			static HyperCubeParameterizer* UnwrapIfRequiredNewPtr(HyperCubeParameterizer * hcPtr)
 			{
-				HypercubeWrapper* w = TypeHelper::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr);
+				HypercubeWrapper* w = mhcpp::types::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr);
 				if (w != nullptr)
 					return(w->InnerParameterizer()->Clone());
 				else
@@ -111,7 +155,7 @@ namespace mhcpp
 
 			static HyperCubeParameterizer* UnwrapIfRequired(HyperCubeParameterizer * hcPtr)
 			{
-				HypercubeWrapper* w = TypeHelper::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr);
+				HypercubeWrapper* w = mhcpp::types::As<HypercubeWrapper, HyperCubeParameterizer>(hcPtr);
 				if (w != nullptr)
 					return(w->InnerParameterizer());
 				else
