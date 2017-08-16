@@ -44,6 +44,7 @@ namespace cinterop
 			}
 			return hh;
 		}
+
 	}
 
 	namespace disposal {
@@ -107,5 +108,39 @@ namespace mhcpp
 			std::vector<string> Names;
 			std::vector<double> Mins, Maxs, Values;
 		};
+
+		template<typename T = double>
+		void transfer_values_from_hypercube_parameter_set(mhcpp::IHyperCubeSetBounds<T>& h, const hypercube_parameter_set& hh, bool setBounds=true, bool strict=true)
+		{
+			ParameterSetDefinition<> pdef(hh);
+			size_t n = pdef.Names.size();
+
+			auto hasItem = [&](const string& s, const vector<string>& v)
+			{
+				return (std::find(v.begin(), v.end(), s) != v.end());
+			};
+
+			auto hNames = h.GetVariableNames();
+
+			for (size_t i = 0; i < n; i++)
+			{
+				string name = pdef.Names[i];
+				if (strict && !hasItem(name, hNames))
+					throw std::logic_error(string("Parameter name ") + name + string(" not found in the hypercube to set"));
+			}
+
+			for (size_t i = 0; i < n; i++)
+			{
+				string name = pdef.Names[i];
+				if (!strict)
+					if (!hasItem(name, hNames))
+							continue; // otherwise below will throw an exception, but first loop would have caught the condition anyway.
+
+				if (setBounds)
+					h.SetMinMaxValue(name, pdef.Mins[i], pdef.Maxs[i], pdef.Values[i]);
+				else
+					h.SetValue(name, pdef.Values[i]);
+			}
+		}
 	}
 }
