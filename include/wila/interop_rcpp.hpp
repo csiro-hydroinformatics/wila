@@ -70,6 +70,78 @@ namespace mhcpp {
 					Named(STRINGSASFACTORS_ITEM_NAME) = false);
 			}
 
+			template<typename P = OptimizerLogData>
+			DataFrame OptimizerLogToDataFrame(P& logData)
+			{
+
+				auto to_vec = [](char** values, int size) 
+				{ 
+					return cinterop::utils::to_cpp_string_vector<string>(values, size, false);
+				};
+
+				DataFrame df = DataFrame::create();
+				int numRows = logData.LogLength;
+				if (numRows == 0) return df;
+
+				for (int i = 0; i < logData.StringDataCount; i++)
+					df.push_back(to_vec(logData.StringData[i], numRows));
+
+				for (int i = 0; i < logData.NumericDataCount; i++)
+				{
+					double* numArray = logData.NumericData[i];
+					vector<double> vecArray(numRows);
+					std::copy(numArray, numArray + numRows, vecArray.begin());
+					df.push_back(vecArray);
+				}
+
+				vector<string> names = to_vec(logData.NamesStringData, logData.StringDataCount);
+				vector<string> tmp = to_vec(logData.NamesNumericData, logData.NumericDataCount);
+				for (size_t i = 0; i < tmp.size(); i++)
+					names.push_back(tmp[i]);
+				df.names() = names;
+
+				return df;
+			}
+
+			template <typename S=SceParameters>
+			S CreateDefaultSceParameters()
+			{
+				const int n = 4;
+				const int nshuffle = 40;
+
+				SceParameters result;
+				result.P = n + 2;
+				result.Pmin = n + 2;
+				result.M = 2 * n + 1;
+				result.Q = std::max(result.M - 2, 2);
+				result.Alpha = 1;
+				result.Beta = result.M;
+				result.NumShuffle = nshuffle;
+				result.TrapezoidalDensityParameter = 1.0;
+				result.ReflectionRatio = -1.0;
+				result.ContractionRatio = 0.5;
+
+				return result;
+			}
+
+			template <typename V = NumericVector>
+			V FromSceParameters(const SceParameters& s)
+			{
+				V sceParams = V::create(
+					Named(SCE_ALPHA) = s.Alpha,
+					Named(SCE_BETA) = s.Beta,
+					Named(SCE_CONTRACTION_RATIO) = s.ContractionRatio,
+					Named(SCE_M) = s.M,
+					Named(SCE_MAX_NUM_SHUFFLE) = s.NumShuffle,
+					Named(SCE_P) = s.P,
+					Named(SCE_PMIN) = s.Pmin,
+					Named(SCE_Q) = s.Q,
+					Named(SCE_REFLECTION_RATIO) = s.ReflectionRatio,
+					Named(SCE_TRAPEZOIDAL_DENSITY_FACTOR) = s.TrapezoidalDensityParameter
+				);
+				return sceParams;
+			}
+
 
 		}
 	}

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "interop_c_structs.h"
 #include <cinterop/common_c_interop.h>
 #include <cinterop/c_cpp_interop.hpp>
 #include <cinterop/object_lifetimes.hpp>
-#include "core.h"
+#include "interop_c_structs.h"
+#include "core.hpp"
 
 namespace cinterop
 {

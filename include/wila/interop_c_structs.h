@@ -25,3 +25,17 @@ typedef struct _hypercube_parameter_set
 } hypercube_parameter_set;
 
 
+struct OptimizerLogData
+{
+	int LogLength;
+	int StringDataCount;
+	int NumericDataCount;
+	char** NamesNumericData;
+	char** NamesStringData;
+	double** NumericData;
+	char*** StringData;
+};
+
+
+
+
