@@ -80,7 +80,15 @@ namespace mhcpp
 		class ParameterSetDefinition
 		{
 		public:
-			ParameterSetDefinition() {}
+			ParameterSetDefinition(
+				const vector<string>& names,
+				const vector<double>& mins,
+				const vector<double>& maxs,
+				const vector<double>& values
+			) : Names(names), Mins(mins), Maxs(maxs), Values(values)
+			{
+			}
+
 			ParameterSetDefinition(const std::vector<P>& definitions)
 			{
 				for (size_t i = 0; i < definitions.size(); i++)
@@ -103,6 +111,22 @@ namespace mhcpp
 					Maxs.push_back(pd.maximum);
 					Values.push_back(pd.value);
 				}
+			}
+
+			hypercube_parameter_set* AsInteropStructPtr()
+			{
+				hypercube_parameter_set* result = new hypercube_parameter_set();
+				result->size = this->Names.size();
+				result->parameters = new parameter_interval[result->size];
+				for (size_t i = 0; i < result->size; i++)
+				{
+					auto p = &result->parameters[i];
+					p->name = STRDUP(this->Names[i].c_str());
+					p->minimum = this->Mins[i];
+					p->maximum = this->Maxs[i];
+					p->value = this->Values[i];
+				}
+				return result;
 			}
 
 			std::vector<string> Names;

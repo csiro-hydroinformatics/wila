@@ -70,6 +70,17 @@ namespace mhcpp {
 					Named(STRINGSASFACTORS_ITEM_NAME) = false);
 			}
 
+			template<typename P = mhcpp::interop::ParameterSetDefinition<>>
+			P HypercubeFromDataFrame(const DataFrame& df)
+			{
+				using namespace mhcpp::interop;
+				vector<string> names = Rcpp::as<vector<string>>(Rcpp::as<CharacterVector>(df[PARAMETERIZER_NAME_ITEM_NAME]));
+				vector<double> mins = Rcpp::as<vector<double>>(Rcpp::as<NumericVector>(df[PARAMETERIZER_MIN_ITEM_NAME]));
+				vector<double> maxs = Rcpp::as<vector<double>>(Rcpp::as<NumericVector>(df[PARAMETERIZER_MAX_ITEM_NAME]));
+				vector<double> values = Rcpp::as<vector<double>>(Rcpp::as<NumericVector>(df[PARAMETERIZER_VALUE_ITEM_NAME]));
+				return P(names, mins, maxs, values);
+			}
+
 			template<typename P = OptimizerLogData>
 			DataFrame OptimizerLogToDataFrame(P& logData)
 			{
