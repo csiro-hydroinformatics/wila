@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <exception>
 #include <mutex>
 #include <atomic>
