@@ -80,6 +80,9 @@ namespace mhcpp
 		class ParameterSetDefinition
 		{
 		public:
+			ParameterSetDefinition() {
+			}
+
 			ParameterSetDefinition(
 				const vector<string>& names,
 				const vector<double>& mins,
