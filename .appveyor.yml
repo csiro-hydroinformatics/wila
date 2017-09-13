@@ -1,0 +1,50 @@
+version: '{build}'
+image:
+- Visual Studio 2017
+- Visual Studio 2015
+platform: x64
+environment:
+  matrix:
+  - PLATFORM: x64
+  - PLATFORM: x86
+build_script:
+- cmd: >-
+    set CONDA_PREFIX=C:\Miniconda3
+
+    if "%PLATFORM%" == "x64" set CONDA_PREFIX=C:\Miniconda3-x64
+
+    set PATH=%CONDA_PREFIX%;%CONDA_PREFIX%\Scripts;%PATH%
+
+    perl -i.bak -n -e"print unless m{(pthread)}" CMakeLists.txt
+
+    conda install -y -c conda-forge tbb
+
+    mkdir catch
+
+    mkdir catch\catch
+
+    curl -L https://github.com/philsquared/Catch/releases/download/v1.9.7/catch.hpp > catch/catch/catch.hpp
+
+    mkdir build
+
+    cd build
+
+    curl -L -O https://github.com/philipphenkel/threadpool/archive/master.zip
+
+    unzip master
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2015" set CMAKE_GENERATOR=Visual Studio 14 2015
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2015" set BOOST_ROOT=C:\Libraries\boost_1_63_0
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" set CMAKE_GENERATOR=Visual Studio 15 2017
+
+    if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" set BOOST_ROOT=C:\Libraries\boost_1_64_0
+
+    if "%PLATFORM%" == "x64" set CMAKE_GENERATOR=%CMAKE_GENERATOR% Win64
+
+    cmake -G "%CMAKE_GENERATOR%" --target ALL_BUILD -DBoost_USE_STATIC_LIBS=ON -Dcatch_INCLUDE_DIRS=C:\projects\wila\catch -DBOOST_ROOT=%BOOST_ROOT% -DBoost_INCLUDE_DIRS=%BOOST_ROOT%\include -DTHREADPOOL_INCLUDE_DIRS=threadpool-master -DTBB_LIBRARIES=%CONDA_PREFIX%\Library\lib -DTBB_INCLUDE_DIRS=%CONDA_PREFIX%\Library\include -DCMAKE_BUILD_TYPE=Release ..
+
+    msbuild wila_tests.vcxproj /p:Platform="%PLATFORM%" /p:Configuration=Release
+test_script:
+- cmd: Release\wila_tests.exe
