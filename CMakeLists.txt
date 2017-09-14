@@ -67,6 +67,7 @@ find_package(TBB REQUIRED)
 message ("The path to the Thread Building Blocks (tbb) library is ${TBB_LIBRARIES}")
 
 find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
+find_path (cinterop_INCLUDE_DIRS cinterop/common_c_interop.h)
 
 INCLUDE_DIRECTORIES(
     ./include
@@ -75,6 +76,7 @@ INCLUDE_DIRECTORIES(
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
     ${catch_INCLUDE_DIRS}
+    ${cinterop_INCLUDE_DIRS}
 )
 
 ## section: precompiled header
