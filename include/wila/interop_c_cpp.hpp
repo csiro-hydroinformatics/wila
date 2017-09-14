@@ -62,6 +62,23 @@ namespace cinterop
 			}
 			delete[] d.parameters;
 		}
+
+		template<>
+		inline void dispose_of<OptimizerLogData>(OptimizerLogData& d)
+		{
+			for (size_t i = 0; i < d.NumericDataCount; i++)
+				delete[] d.NumericData[i];
+			delete[] d.NumericData;
+
+			cinterop::disposal::free_c_ptr_array<char>(d.NamesNumericData, d.NumericDataCount);
+			cinterop::disposal::free_c_ptr_array<char>(d.NamesStringData, d.StringDataCount);
+			for (size_t i = 0; i < d.StringDataCount; i++)
+				cinterop::disposal::free_c_ptr_array<char>(d.StringData[i], d.LogLength);
+			delete[] d.StringData;
+
+		}
+
+
 	}
 
 }
@@ -169,5 +186,44 @@ namespace mhcpp
 					h.SetValue(name, pdef.Values[i]);
 			}
 		}
+
+
+		template<typename T = double>
+		T** vector_vector_to_c_array(const vector<vector<T>>& values)
+		{
+			int* size = nullptr;
+			return cinterop::utils::vector_to_c_array<vector<T>, T*>(values, cinterop::utils::vector_identity_to_c_array<T>, size);
+		}
+
+		template<typename S = string>
+		char*** str_vector_vector_to_char_arrays(const vector<vector<S>>& data, int* size)
+		{
+			std::function<char**(const vector<S>& x)> conv = [](const vector<S>& x) {return cinterop::utils::to_ansi_char_array<S>(x); };
+			return cinterop::utils::vector_to_c_array<vector<S>, char**>(data, conv, size);
+		}
+
+		template<typename P>
+		OptimizerLogData* get_optimizer_log_data(ILoggerMh<P>& logger)
+		{
+			OptimizerLogData* result = new OptimizerLogData();
+			result->LogLength = logger.GetLength();
+			std::map<string, vector<string>> strData = logger.GetStringData();
+			std::map<string, vector<double>> numData = logger.GetNumericData();
+
+			vector<string> numKeys = mhcpp::utils::GetKeys<string, vector<double>>(numData);
+			vector<string> strKeys = mhcpp::utils::GetKeys<string, vector<string>>(strData);
+			vector<vector<double>> numValues = mhcpp::utils::GetValues<string, vector<double>>(numData, numKeys);
+			vector<vector<string>> strValues = mhcpp::utils::GetValues<string, vector<string>>(strData, strKeys);
+			result->NumericDataCount = numKeys.size();
+			result->StringDataCount = strKeys.size();
+			result->NamesNumericData = cinterop::utils::to_ansi_char_array<string>(numKeys);
+			result->NamesStringData = cinterop::utils::to_ansi_char_array<string>(strKeys);
+
+			result->NumericData = mhcpp::interop::vector_vector_to_c_array<double>(numValues);
+			result->StringData = mhcpp::interop::str_vector_vector_to_char_arrays(strValues, &result->StringDataCount);
+
+			return result;
+		}
+
 	}
 }

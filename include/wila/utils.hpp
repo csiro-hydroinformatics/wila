@@ -73,6 +73,12 @@ namespace mhcpp
 			return keyValue.first;
 		}
 
+		template<typename K, typename V>
+		const V& GetValue(const std::pair<K, V>& keyValue)
+		{
+			return keyValue.second;
+		}
+
 		template<typename K = string, typename V = string>
 		std::map<K, V> MergeDictionaries(const std::map<K, V>& first, const std::map<K, V>& second)
 		{
@@ -111,6 +117,25 @@ namespace mhcpp
 			transform(aMap.begin(), aMap.end(), keys.begin(), GetKey<K, V>);
 			return keys;
 		}
+
+		template<typename K, typename V>
+		const std::vector<V> GetValues(const std::map<K, V>& aMap)
+		{
+			std::vector<V> values(aMap.size());
+			transform(aMap.begin(), aMap.end(), values.begin(), GetValue<K, V>);
+			return values;
+		}
+
+		template<typename K = string, typename V = string>
+		static std::vector<V> GetValues(const std::map<K, V>& dict, const std::vector<K>& keys)
+		{
+			std::vector<V> res;
+			res.reserve(keys.size());
+			for (auto& k : keys)
+				res.push_back(dict.at(k));
+			return res;
+		}
+
 
 		template<typename ElemType>
 		std::vector<double> Normalize(const std::vector<ElemType>& hist)

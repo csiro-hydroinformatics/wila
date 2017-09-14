@@ -18,6 +18,8 @@
 
 #include "common.h"
 
+#include <wila/interop_c_cpp.hpp>
+
 #define REQUIRE_WITHIN_ABSOLUTE_TOLERANCE( expected, actual, delta) REQUIRE( (abs(expected - actual) < delta) )
 
 void checkLOneTolerance(Hc point, const std::map<string, double>& expected, double delta)
@@ -118,7 +120,6 @@ TEST_CASE("Basic objective evaluator", "[objectives]") {
 		Hc hc = createTestHc(1.5, 3.3);
 		Hc goal = createTestHc(1, 3);
 
-		//IObjectiveEvaluator<HyperCube < double > >* evaluator = new TopologicalDistance<HyperCube < double > >(goal);
 		TopologicalDistance<HyperCube < double > > evaluator(goal);
 
 		WHEN("Evaluating distance") {
@@ -834,4 +835,34 @@ TEST_CASE("Test templated generic utilities for maps and vectors", "[utils]")
 	auto res = mhcpp::utils::Subset(sub, dict);
 	REQUIRE(res.size() == 1);
 	REQUIRE(mhcpp::utils::HasKey(res, "b"));
+}
+
+TEST_CASE("Optimizer log data interop creation/disposal")
+{
+
+	// A minimal unit test after refactoring log data creation/disposal out of RPP and swift.
+	SimpleLogger<Hc> logger;
+
+	Hc goal = createTestHc(1, 3);
+	TopologicalDistance<Hc> evaluator(goal);
+
+	IObjectiveScores<Hc> scores = evaluator.EvaluateScore(createTestHc(1.5, 3.3));
+	logger.Write(scores, std::map<string, string>({ { "key1", "value1" } }));
+
+	scores = evaluator.EvaluateScore(createTestHc(2.5, 3.3));
+	logger.Write(scores, std::map<string, string>({ { "key1", "value2" } }));
+	scores = evaluator.EvaluateScore(createTestHc(2.5, 3.4));
+	logger.Write(scores, std::map<string, string>({ { "key2", "value1" } }));
+
+	logger.Write("Some message", std::map<string, string>({ { "key3", "attribute of the message" } }));
+
+	auto log = mhcpp::interop::get_optimizer_log_data<Hc>(logger);
+
+	REQUIRE(log->LogLength == 3);
+	REQUIRE(log->StringDataCount == 4);
+	REQUIRE(log->NumericDataCount == 3);
+
+	cinterop::disposal::dispose_of(*log);
+	delete log;
+
 }
