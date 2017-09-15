@@ -19,7 +19,7 @@ This software is released under the LGPL v3. See LICENSE.
 This is written in C++ using some features from the C++11 standard. It is known to compile with:
 
 * GCC version 4.8 or above
-* Visual C++ as from Visual Studio 2013 update 5, or above.
+* Visual C++ as from Visual Studio 2015, or above.
 
 # Getting started
 
