@@ -5,6 +5,7 @@
 #include <cinterop/object_lifetimes.hpp>
 #include "interop_c_structs.h"
 #include "core.hpp"
+#include "logging.hpp"
 
 namespace cinterop
 {
@@ -203,7 +204,7 @@ namespace mhcpp
 		}
 
 		template<typename P>
-		OptimizerLogData* get_optimizer_log_data(ILoggerMh<P>& logger)
+		OptimizerLogData* get_optimizer_log_data(mhcpp::logging::ILoggerMh<P>& logger)
 		{
 			OptimizerLogData* result = new OptimizerLogData();
 			result->LogLength = logger.GetLength();
