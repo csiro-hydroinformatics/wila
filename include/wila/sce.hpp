@@ -13,13 +13,13 @@
 #include "multithreading.hpp"
 #include "logging.hpp"
 
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <concurrent_vector.h>
 #else
 #include <tbb/concurrent_vector.h>
 #endif
 			
-#ifdef _WIN32
+#ifdef _MSC_VER
 using namespace Concurrency;
 #else
 using namespace tbb;
