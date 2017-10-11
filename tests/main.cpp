@@ -866,3 +866,34 @@ TEST_CASE("Optimizer log data interop creation/disposal")
 	delete log;
 
 }
+
+TEST_CASE("Simplex, single objective", "[optimizer]") {
+
+
+	using T = HyperCube < double >;
+	int hcStart = T::NumInstances();
+	int m = 20;
+	int q = 10, alpha = 2, beta = 3;
+	IRandomNumberGeneratorFactory<> rng(2);
+	auto unif = createTestUnifrand<T>(421);
+
+	std::vector < IObjectiveScores<T> > scores = createTestScores<T>(m, 123);
+	REQUIRE((hcStart + m + 1) == T::NumInstances());
+	IFitnessAssignment<double, T> fitnessAssignment;
+	//ILoggerMh* logger = nullptr;
+	T goal = createTestHc(1.5, 3.4);
+	TopologicalDistance<T> evaluator(goal);
+
+	using namespace mhcpp::optimization;
+	double contractionRatio = 0.5;
+	double reflectionRatio = -1.0;
+	double expansionRatio = +1.5;
+
+	CandidateFactorySeed<Hc> seeding(0, goal);
+
+	SimplexNelderMead<T>::TerminationCondition terminationCondition;// = CreateMaxNumShuffle(1);
+
+
+	SimplexNelderMead<T> simplex(evaluator, seeding, terminationCondition, rng, fitnessAssignment, reflectionRatio, expansionRatio, contractionRatio);
+	 
+}

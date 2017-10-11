@@ -5,6 +5,8 @@
 #include "wila/core.hpp"
 #include "wila/sce.hpp"
 
+#include "wila/simplex.hpp"
+
 using namespace mhcpp;
 using namespace mhcpp::optimization;
 
