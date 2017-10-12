@@ -73,7 +73,6 @@ namespace mhcpp
 			void ExecuteTasks(size_t nThreads)
 			{
 				threadExceptions.clear();
-				boost::threadpool::pool tp(1);
 				if (!tp.size_controller().resize(nThreads)) {
 					// this can be false on Linux. But, this is unclear how to prevent this. Since the size_controller 
 					// itself also catches a thread exception and 'just' return false, let's see if we can ignore it.
@@ -100,6 +99,8 @@ namespace mhcpp
 			}
 
 		private:
+			boost::threadpool::pool tp;
+
 			void Cleanup()
 			{
 				try {
