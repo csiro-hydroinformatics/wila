@@ -4,22 +4,22 @@
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include "boost/date_time/posix_time/posix_time.hpp"
+#include "boost/threadpool.hpp"
 #include "sce.h"
 #include "core.hpp"
 #include "utils.hpp"
 #include "evaluations.hpp"
 #include "multithreading.hpp"
-#include "boost/date_time/posix_time/posix_time.hpp"
+#include "logging.hpp"
 
-#include "boost/threadpool.hpp"
-
-#ifdef _WIN32
+#ifdef _MSC_VER
 #include <concurrent_vector.h>
 #else
 #include <tbb/concurrent_vector.h>
 #endif
 			
-#ifdef _WIN32
+#ifdef _MSC_VER
 using namespace Concurrency;
 #else
 using namespace tbb;
@@ -29,30 +29,6 @@ namespace mhcpp
 {
 	namespace logging
 	{
-		/// <summary>
-		/// A facade for logging information from optimisation processes, to avoid coupling to specific frameworks.
-		/// </summary>
-		template<class TSys>
-		class ILoggerMh
-		{
-		public:
-			//virtual void Write(std::vector<IBaseObjectiveScores> scores, const std::map<string, string>& ctags) = 0;
-			//virtual void Write(FitnessAssignedScores<double> worstPoint, const std::map<string, string>& ctags) = 0;
-			virtual void Write(TSys* newPoint, const std::map<string, string>& ctags) = 0;
-			virtual void Write(const string& message, const std::map<string, string>& ctags) = 0;
-			virtual void Write(const FitnessAssignedScores<double, TSys>& scores, const std::map<string, string>& tags) = 0;
-			virtual void Write(const std::vector<FitnessAssignedScores<double, TSys>>& scores, const std::map<string, string>& ctags) = 0;
-			virtual void Write(const std::vector<IObjectiveScores<TSys>>& scores, const std::map<string, string>& tags) = 0;
-			virtual void Reset() = 0;
-
-			virtual std::map<string, vector<string>>GetStringData() = 0;
-			virtual std::map<string, vector<double>>GetNumericData() = 0;
-			virtual int GetLength() = 0;
-			virtual ILoggerMh<TSys>* CreateNew() = 0;
-
-			virtual ~ILoggerMh () {}
-		};
-
 		class LoggerMhHelper
 		{
 		public:
@@ -1314,6 +1290,13 @@ namespace mhcpp
 				currentShuffle = 1;
 				isFinished = terminationCondition.IsFinished();
 				if (isFinished) logTerminationConditionMet();
+
+				if (useMultiThreading && evaluator->IsCloneable())
+				{
+					int nThreads = this->GetMaxDegreeOfParallelism();
+					cte.PoolSize(nThreads);
+				}
+
 				while (!isFinished && !isCancelled)
 				{
 					EvolveComplexes();
@@ -1406,14 +1389,14 @@ namespace mhcpp
 				this->complexes = partition(scores);
 			}
 
+			CrossThreadExceptions<std::function<void()>> cte;
+
 			void EvolveComplexes()
 			{
 				for (int i = 0; i < complexes.size(); i++)
 					complexes.at(i)->ComplexId = std::to_string(i);
 				if (useMultiThreading && evaluator->IsCloneable())
 				{
-					int nThreads = this->GetMaxDegreeOfParallelism();
-
 					vector<std::function<void()>> tasks;
 					for (int i = 0; i < complexes.size(); i++)
 					{
@@ -1425,9 +1408,7 @@ namespace mhcpp
 						};
 						tasks.push_back(evolveFunc);
 					}
-
-					CrossThreadExceptions<std::function<void()>> cte(tasks);
-					cte.ExecuteTasks(nThreads);
+					cte.ExecuteTasks(tasks);
 				}
 				else
 				{

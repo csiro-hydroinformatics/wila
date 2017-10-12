@@ -3,9 +3,9 @@
 #include <string>
 
 #include <Rcpp.h>
-#include <wila/sce.h>
-#include <wila/interop_c_structs.h>
-#include <wila/interop_c_cpp.hpp>
+#include "sce.h"
+#include "interop_c_structs.h"
+#include "interop_c_cpp.hpp"
 
 
 #define SCE_ALPHA  "alpha"

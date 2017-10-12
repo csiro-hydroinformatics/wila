@@ -42,12 +42,20 @@
   </PropertyGroup>
   <PropertyGroup />
   <ItemGroup>
+    <ClInclude Include="..\include\wila\constructs.hpp" />
+    <ClInclude Include="..\include\wila\core.h" />
     <ClInclude Include="..\include\wila\core.hpp" />
     <ClInclude Include="..\include\wila\evaluations.hpp" />
+    <ClInclude Include="..\include\wila\interop_c_cpp.hpp" />
+    <ClInclude Include="..\include\wila\interop_c_structs.h" />
+    <ClInclude Include="..\include\wila\interop_rcpp.hpp" />
+    <ClInclude Include="..\include\wila\logging.hpp" />
+    <ClInclude Include="..\include\wila\multithreading.hpp" />
     <ClInclude Include="..\include\wila\random.hpp" />
     <ClInclude Include="..\include\wila\sce.h" />
     <ClInclude Include="..\include\wila\sce.hpp" />
     <ClInclude Include="..\include\wila\utils.hpp" />
+    <ClInclude Include="..\include\wila\wrappers.hpp" />
     <ClInclude Include="common.h" />
   </ItemGroup>
   <ItemGroup>

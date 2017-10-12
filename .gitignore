@@ -36,3 +36,6 @@ tests/Release/*
 *.sdf
 *.idb
 *.db
+.vscode/
+*.opendb
+*.ipch
