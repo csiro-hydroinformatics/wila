@@ -43,22 +43,78 @@ namespace mhcpp
 {
 	namespace utils
 	{
+		/**
+		* \class	CrossThreadExceptions
+		*
+		* \brief	A class to facilitate multithreaded tasks execution, taking care 
+		*			of cross-thread exceptions that otherwise would cause program termination.
+		*/
 		template <typename T = std::function<void()>>
 		class CrossThreadExceptions
 		{
 		public:
+			/**
+			* \brief	Constructor.
+			*
+			* \param	tasks the tasks that have to be executed by this object
+			* \param	cleanup optional cleanup tasks that may need to be performed after the tasks executions
+			*/
 			CrossThreadExceptions(const std::vector<T>& tasks, const std::vector<std::function<void()>>& cleanup)
 			{
 				this->tasks = tasks;
 				this->cleanup = cleanup;
 			}
+
+			/**
+			* \brief	Constructor.
+			*
+			* \param	tasks the tasks that have to be executed by this object
+			*/
 			CrossThreadExceptions(const std::vector<T>& tasks)
 			{
 				this->tasks = tasks;
 			}
+
+			CrossThreadExceptions()
+			{
+			}
+
 			~CrossThreadExceptions()
 			{
 			}
+
+			/**
+			* \brief	Sets the size of the thread pool.
+			*/
+			void PoolSize(size_t nThreads)
+			{
+				if (tp.size() != nThreads) {
+					if (!tp.size_controller().resize(nThreads)) {
+						// this can be false on Linux. But, this is unclear how to prevent this. Since the size_controller 
+						// itself also catches a thread exception and 'just' return false, let's see if we can ignore it.
+						throw std::runtime_error(string("Unable to set size of threadpool. Caller requested nThreads=") + boost::lexical_cast<string>(nThreads));
+					}
+				}
+			}
+
+			/**
+			* \brief	Execute a set of tasks
+			*
+			* \param	tasks the tasks that have to be executed by this object vis the underlying thread pool
+			*/
+			void ExecuteTasks(const std::vector<T>& tasks)
+			{
+				this->tasks = tasks;
+				ExecuteTasks();
+			}
+
+			void ExecuteTasks(size_t nThreads)
+			{
+				PoolSize(nThreads);
+				ExecuteTasks();
+			}
+
+		private:
 
 			void TryExecute(T& f)
 			{
@@ -70,15 +126,9 @@ namespace mhcpp
 				}
 			}
 
-			void ExecuteTasks(size_t nThreads)
+			void ExecuteTasks()
 			{
 				threadExceptions.clear();
-				if (!tp.size_controller().resize(nThreads)) {
-					// this can be false on Linux. But, this is unclear how to prevent this. Since the size_controller 
-					// itself also catches a thread exception and 'just' return false, let's see if we can ignore it.
-					throw std::runtime_error(string("Unable to set size of threadpool. Caller requested nThreads=") + boost::lexical_cast<string>(nThreads));
-				}
-
 				for (int i = 0; i < tasks.size(); i++)
 				{
 					T tryExecuteFunc =
@@ -98,7 +148,7 @@ namespace mhcpp
 				}
 			}
 
-		private:
+
 			boost::threadpool::pool tp;
 
 			void Cleanup()

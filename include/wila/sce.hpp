@@ -1290,6 +1290,13 @@ namespace mhcpp
 				currentShuffle = 1;
 				isFinished = terminationCondition.IsFinished();
 				if (isFinished) logTerminationConditionMet();
+
+				if (useMultiThreading && evaluator->IsCloneable())
+				{
+					int nThreads = this->GetMaxDegreeOfParallelism();
+					cte.PoolSize(nThreads);
+				}
+
 				while (!isFinished && !isCancelled)
 				{
 					EvolveComplexes();
@@ -1382,14 +1389,14 @@ namespace mhcpp
 				this->complexes = partition(scores);
 			}
 
+			CrossThreadExceptions<std::function<void()>> cte;
+
 			void EvolveComplexes()
 			{
 				for (int i = 0; i < complexes.size(); i++)
 					complexes.at(i)->ComplexId = std::to_string(i);
 				if (useMultiThreading && evaluator->IsCloneable())
 				{
-					int nThreads = this->GetMaxDegreeOfParallelism();
-
 					vector<std::function<void()>> tasks;
 					for (int i = 0; i < complexes.size(); i++)
 					{
@@ -1401,9 +1408,7 @@ namespace mhcpp
 						};
 						tasks.push_back(evolveFunc);
 					}
-
-					CrossThreadExceptions<std::function<void()>> cte(tasks);
-					cte.ExecuteTasks(nThreads);
+					cte.ExecuteTasks(tasks);
 				}
 				else
 				{
