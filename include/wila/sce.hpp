@@ -1408,6 +1408,9 @@ namespace mhcpp
 						};
 						tasks.push_back(evolveFunc);
 					}
+					// call to PoolSize as candidate fix for https://jira.csiro.au/browse/WIRADA-476
+					int nThreads = this->GetMaxDegreeOfParallelism();
+					cte.PoolSize(nThreads);
 					cte.ExecuteTasks(tasks);
 				}
 				else

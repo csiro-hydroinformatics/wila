@@ -129,6 +129,13 @@ namespace mhcpp
 			void ExecuteTasks()
 			{
 				threadExceptions.clear();
+				if (tasks.size() == 0)
+					return;
+
+				if (tp.size() == 0) {
+					throw std::logic_error("No thread available in the thread pool. You must use CrossThreadExceptions::PoolSize to set a pool size.");
+				}
+
 				for (int i = 0; i < tasks.size(); i++)
 				{
 					T tryExecuteFunc =
