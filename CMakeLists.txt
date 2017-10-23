@@ -32,6 +32,7 @@ SET(${this_target}_HEADER_FILES
     include/wila/interop_c_cpp.hpp
     include/wila/interop_c_structs.h
     include/wila/interop_rcpp.hpp
+    include/wila/logging.hpp
     include/wila/multithreading.hpp
     include/wila/random.hpp
     include/wila/sce.h
