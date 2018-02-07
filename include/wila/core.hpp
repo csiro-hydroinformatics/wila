@@ -455,6 +455,16 @@ namespace mhcpp
 		TSysConfig t;
 	};
 
+    /**
+     * \class   CandidateFactorySeed
+     *
+     * \brief   A template class that can reproducibly generate a series candidate factories of a certain type. The main purpose of this class is 
+     *          to help manage randomised yet repeatable processes across serial or parallel computations.
+     *
+     * \tparam  TSysConfig  Type of the system configuration.
+     * \tparam  TCandidateFactory  The type of candidate factory created by this class.
+     */
+
 	template<typename TSysConfig, typename TCandidateFactory = UniformRandomSamplingFactory<TSysConfig>>
 	class CandidateFactorySeed : public ICandidateFactorySeed<TSysConfig>
 	{
