@@ -877,7 +877,11 @@ TEST_CASE("Population of hypercubes and geometric transformations", "[population
     CandidateFactorySeed<Hc> seeding(0, goal);
     IFitnessAssignment<double, T> fitnessAssignment;
     IRandomNumberGeneratorFactory<> rng(2);
-    SimplexPopulation<T> sp(evaluator, seeding, rng, fitnessAssignment);
+
+	int m = 10;
+	std::vector<IObjectiveScores<T>> scores = createTestScores<T>(m, 123);
+
+    SimplexPopulation<T> sp( scores, evaluator.Clone(), seeding.Create(), fitnessAssignment);
 
 }
 TEST_CASE("Simplex, single objective", "[optimizer]") {

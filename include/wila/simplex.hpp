@@ -44,56 +44,66 @@ namespace mhcpp
 			{
 				nbObjectiveEvaluations += n;
 			}
+
+		private:
 			std::vector<FitnessAssignedScores<double, T>> evolved;
+			SceOptions options;
 			IObjectiveEvaluator<T>* evaluator;
 			IFitnessAssignment<double, T> fitnessAssignment;
+			double ContractionRatio;
+			double ReflectionRatio;
+			int alpha, q;
 			//IRandomNumberGeneratorFactory<> rng;
-			//ICandidateFactory<T>* cf = nullptr;
-			//std::map<string, string> tags;
-			//ILoggerMh<T>* logger = nullptr;
+			ICandidateFactory<T>* cf = nullptr;
+			std::map<string, string> tags;
+			ILoggerMh<T>* logger = nullptr;
 
-		public:
-
-			SimplexPopulation(const IObjectiveEvaluator<T>& evaluator,
-				const ICandidateFactorySeed<T>& candidateFactory,
-				const TerminationCondition& terminationCondition,
-				const IRandomNumberGeneratorFactory<>& rng,
-				IFitnessAssignment<double, T> fitnessAssignment,
-				double reflectionRatio = -1.0,
-				double expansionRatio = +1.5,
-				double contractionRatio = 0.5,
-				//ILoggerMh<T>* logger = nullptr,
-				const std::map<string, string>& tags = std::map<string, string>(), SceOptions options = SceOptions::RndInSubComplex)
+			void Init(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, 
+				ICandidateFactory<T> * candidateFactory,
+				IFitnessAssignment<double, T> fitnessAssignment, ILoggerMh<T>* logger, const std::map<string, string>& tags, SceOptions options,
+				double contractionRatio, double reflectionRatio)
 			{
 				this->options = options;
-				if (!evaluator.IsCloneable()) throw std::logic_error("objective evaluator must be cloneable if calling this simplex constructor");
-				this->evaluator = evaluator.Clone();
+				this->evaluator = evaluator;
 				this->fitnessAssignment = fitnessAssignment;
 				this->ContractionRatio = contractionRatio;
 				this->ReflectionRatio = reflectionRatio;
-				//this->alpha = alpha;
-				//this->q = q;
-				this->rng = rng;
+				//this->rng = rng;
 				this->cf = candidateFactory;
-				if (cf == nullptr)
-					cf = new UniformRandomSamplingFactory<T>(rng, simplexPopulation[0].SystemConfiguration());
-				this->discreteRng = &discreteRng;
+				//if (cf == nullptr)
+				//	cf = new UniformRandomSamplingFactory<T>(rng, complexPopulation[0].SystemConfiguration());
+				//this->discreteRng = &discreteRng;
 				this->tags = tags;
 				this->logger = logger;
-				evolved = getSimplexNelderMead(simplexPopulation, leftOutFromSimplexNelderMead);
+#ifdef _DEBUG
+				//CheckParameterFeasible(complexPopulation);
+#endif
+				evolved = getSimplexPopulation(complexPopulation);
+#ifdef _DEBUG
+				//CheckParameterFeasible(leftOutFromSubcomplex);
+#endif
 			}
 
-			~Population()
+		public:
+
+			SimplexPopulation(const std::vector<IObjectiveScores<T>>& complexPopulation, IObjectiveEvaluator<T>* evaluator, 
+				ICandidateFactory<T> * candidateFactory, 
+				IFitnessAssignment<double, T> fitnessAssignment, ILoggerMh<T>* logger = nullptr, const std::map<string, string>& tags = std::map<string, string>(), SceOptions options = SceOptions::RndInSimplexPopulation)
+			{
+				Init(complexPopulation, evaluator, q, alpha, candidateFactory, fitnessAssignment, logger, tags, options, contractionRatio, reflectionRatio);
+			}
+
+			~SimplexPopulation()
 			{
 				// Nothing;
 			}
 
-			bool IsCancelledOrFinished()
-			{
-				if (complex != nullptr)
-					return this->complex->IsCancelledOrFinished();
-				return false;
-			}
+			//bool IsCancelledOrFinished()
+			//{
+			//	if (complex != nullptr)
+			//		return this->complex->IsCancelledOrFinished();
+			//	return false;
+			//}
 
 			std::map<string, string> createTagConcat(const std::initializer_list<std::tuple<string, string>>& tuples)
 			{
@@ -105,22 +115,13 @@ namespace mhcpp
 				return nbObjectiveEvaluations;
 			}
 
-			std::vector<IObjectiveScores<T>> WholePopulation()
+			static FitnessAssignedScores<double, T> FindWorstPoint(std::vector<FitnessAssignedScores<double, T>>& subComplex, std::vector<FitnessAssignedScores<double, T>>& pointRemoved)
 			{
-				auto scores = aggregatePoints(evolved, leftOutFromSimplexNelderMead);
-#ifdef _DEBUG
-				//CheckParameterFeasible(scores);
-#endif
-				return scores;
-			}
-
-			static FitnessAssignedScores<double, T> FindWorstPoint(std::vector<FitnessAssignedScores<double, T>>& SimplexNelderMead, std::vector<FitnessAssignedScores<double, T>>& pointRemoved)
-			{
-				auto tmp = AsPointers<FitnessAssignedScores<double, T>>(SimplexNelderMead);
+				auto tmp = AsPointers<FitnessAssignedScores<double, T>>(subComplex);
 				FitnessAssignedScores<double, T>::Sort(tmp);
 				auto worst = tmp[tmp.size() - 1];
 				pointRemoved.clear();
-				for (auto& point : SimplexNelderMead)
+				for (auto& point : subComplex)
 				{
 					if (&point != worst)
 						pointRemoved.push_back(point);
@@ -132,25 +133,23 @@ namespace mhcpp
 
 			void clear(std::vector<FitnessAssignedScores<double, T>>& vec)
 			{
-				//for (auto ptr : vec)
-				//	delete ptr;
 				vec.clear();
 			}
 
-			void replaceEvolved(const std::vector<FitnessAssignedScores<double, T>>& candidateSimplexNelderMead)
+			void replaceEvolved(const std::vector<FitnessAssignedScores<double, T>>& candidateSubcomplex)
 			{
 				clear(evolved);
-				evolved = candidateSimplexNelderMead;
+				evolved = candidateSubcomplex;
 			}
 
 			std::vector<FitnessAssignedScores<double, T>> replaceWithRandom(const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, const FitnessAssignedScores<double, T>& worstPoint)
 			{
 				std::vector<FitnessAssignedScores<double, T>> result;
-				if ((options & SceOptions::RndInSimplexNelderMead) == SceOptions::RndInSimplexNelderMead)
+				if ((options & SceOptions::RndInSimplexPopulation) == SceOptions::RndInSimplexPopulation)
 				{
 					// TODO: what was SceOptions::ReflectionRandomization about? Needs re-clarification to assess whether worth porting.
 					//						if ((options & SceOptions::ReflectionRandomization) == SceOptions::ReflectionRandomization)
-					result = generateRandomWithinSimplexNelderMead(withoutWorstPoint, worstPoint);
+					result = generateRandomWithinSubcomplex(withoutWorstPoint, worstPoint);
 					//						else
 					//							result = generateRandomWithinShuffleBounds(worstPoint, withoutWorstPoint);
 				}
@@ -208,31 +207,30 @@ namespace mhcpp
 				this->loggerWrite(pts, ctags);
 			}
 
-			std::vector<IObjectiveScores<T>> aggregatePoints(const std::vector<FitnessAssignedScores<double, T>>& SimplexNelderMead, const std::vector<IObjectiveScores<T>>& leftOutFromSimplexNelderMead)
+			std::vector<IObjectiveScores<T>> aggregatePoints(const std::vector<FitnessAssignedScores<double, T>>& subComplex, const std::vector<IObjectiveScores<T>>& leftOutFromSubcomplex)
 			{
-				std::vector<IObjectiveScores<T>> result = FitnessAssignedScores<double, T>::GetScores(SimplexNelderMead);
-				for (size_t i = 0; i < leftOutFromSimplexNelderMead.size(); i++)
+				std::vector<IObjectiveScores<T>> result = FitnessAssignedScores<double, T>::GetScores(subComplex);
+				for (size_t i = 0; i < leftOutFromSubcomplex.size(); i++)
 				{
-					result.push_back(leftOutFromSimplexNelderMead[i]);
+					result.push_back(leftOutFromSubcomplex[i]);
 				}
 				return result;
 			}
 
-			FitnessAssignedScores<double, T> evaluateNewSet(T newPoint, const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, std::vector<FitnessAssignedScores<double, T>>& candidateSimplexNelderMead)
+			FitnessAssignedScores<double, T> evaluateNewSet(T newPoint, const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, std::vector<FitnessAssignedScores<double, T>>& candidateSubcomplex)
 			{
-				IObjectiveScores<T> scoreNewPoint = evaluator.EvaluateScore(newPoint);
+				IObjectiveScores<T> scoreNewPoint = evaluator->EvaluateScore(newPoint);
 				IncrementEvaluations(1);
 
 				std::vector<IObjectiveScores<T>> scores = FitnessAssignedScores<double, T>::GetScores(withoutWorstPoint);
 				scores.push_back(scoreNewPoint);
 				auto fitness = fitnessAssignment.AssignFitness(scores);
-				candidateSimplexNelderMead.clear();
+				candidateSubcomplex.clear();
 				for (size_t i = 0; i < fitness.size(); i++)
 				{
-					candidateSimplexNelderMead.push_back(FitnessAssignedScores<double, T>(fitness[i]));
+					candidateSubcomplex.push_back(FitnessAssignedScores<double, T>(fitness[i]));
 				}
-				//return Array.Find<FitnessAssignedScores<double, T>>(candidateSimplexNelderMead, (x = > (x.Scores() == scoreNewPoint)));
-				return (candidateSimplexNelderMead[candidateSimplexNelderMead.size() - 1]);
+				return (candidateSubcomplex[candidateSubcomplex.size() - 1]);
 			}
 
 			T reflect(const FitnessAssignedScores<double, T>& worstPoint, T centroid, bool& success)
@@ -271,12 +269,12 @@ namespace mhcpp
 				return FitnessAssignedScores<double, T>::GetScores(points);
 			}
 
-			std::vector<FitnessAssignedScores<double, T>> removePoint(const std::vector<FitnessAssignedScores<double, T>>& SimplexNelderMead, FitnessAssignedScores<double, T> worstPoint)
+			std::vector<FitnessAssignedScores<double, T>> removePoint(const std::vector<FitnessAssignedScores<double, T>>& subComplex, FitnessAssignedScores<double, T> worstPoint)
 			{
 				std::vector<FitnessAssignedScores<double, T>> result;
-				for (size_t i = 0; i < SimplexNelderMead.size(); i++)
+				for (size_t i = 0; i < subComplex.size(); i++)
 				{
-					auto p = SimplexNelderMead.at(i);
+					auto p = subComplex.at(i);
 					if (p != worstPoint)
 						result.push_back(p);
 				}
@@ -287,26 +285,26 @@ namespace mhcpp
 				const FitnessAssignedScores<double, T>& worstPoint, const T& centroid)
 			{
 				std::vector<FitnessAssignedScores<double, T>> result;
-				std::vector<FitnessAssignedScores<double, T>> candidateSimplexNelderMead;
+				std::vector<FitnessAssignedScores<double, T>> candidateSubcomplex;
 				bool success;
 				T contractionPoint = contract(worstPoint, centroid, success);
 
 				if (success)
 				{
-					FitnessAssignedScores<double, T> trialPoint = evaluateNewSet(contractionPoint, withoutWorstPoint, candidateSimplexNelderMead);
+					FitnessAssignedScores<double, T> trialPoint = evaluateNewSet(contractionPoint, withoutWorstPoint, candidateSubcomplex);
 					if (trialPoint.CompareTo(worstPoint) <= 0)
 					{
-						result = candidateSimplexNelderMead;
+						result = candidateSubcomplex;
 						loggerWrite(trialPoint, createTagConcat({
-							LoggerMhHelper::MkTuple("Message", "Contracted point in SimplexNelderMead"),
+							LoggerMhHelper::MkTuple("Message", "Contracted point in subcomplex"),
 							createTagCatComplexNo() }));
 						return result;
 					}
 					else
 					{
-						clear(candidateSimplexNelderMead);
+						clear(candidateSubcomplex);
 						loggerWrite(trialPoint, createTagConcat({
-							LoggerMhHelper::MkTuple("Message", "Contracted point in SimplexNelderMead-Failed"),
+							LoggerMhHelper::MkTuple("Message", "Contracted point in subcomplex-Failed"),
 							createTagCatComplexNo() }));
 					}
 				}
@@ -322,32 +320,7 @@ namespace mhcpp
 				return result;
 			}
 
-			/*
-			std::vector<FitnessAssignedScores<double, T>> generateRandomWithinShuffleBounds(const FitnessAssignedScores<double, T>& worstPoint, const std::vector<FitnessAssignedScores<double, T>>  withoutWorstPoint)
-			{
-			auto sbcplx = convertAllToHyperCube(merge(withoutWorstPoint, worstPoint));
-			auto wp = worstPoint.Scores().GetSystemConfiguration() as IHyperCube < double >;
-			auto newPoint = wp.Clone() as IHyperCube < double >;
-			auto varnames = newPoint.GetVariableNames();
-			auto rand = hyperCubeOps.GenerateRandomWithinHypercube(sbcplx);
-			for (int i = 0; i < varnames.Length; i++)
-			{
-			auto v = varnames[i];
-			auto value = 2 * centroid.GetValue(v) - wp.GetValue(v);
-			if (value < wp.GetMinValue(v) || value > wp.GetMaxValue(v))
-			newPoint.SetValue(v, rand.GetValue(v));
-			else
-			newPoint.SetValue(v, value);
-			}
-			auto newScore = evaluator.EvaluateScore(newPoint);
-			loggerWrite(newScore, createTagConcat(
-			LoggerMhHelper::MkTuple("Message", "Adding a partially random point"),
-			LoggerMhHelper::MkTuple("Category", "Complex No " + complexId)
-			));
-			return fitnessAssignment.AssignFitness(aggregate(newScore, withoutWorstPoint));
-			}
-			*/
-			std::vector<FitnessAssignedScores<double, T>> generateRandomWithinSimplexNelderMead(const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, const FitnessAssignedScores<double, T>& worstPoint)
+			std::vector<FitnessAssignedScores<double, T>> generateRandomWithinSubcomplex(const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, const FitnessAssignedScores<double, T>& worstPoint)
 			{
 				// 2012-02-14: The Duan et al 1993 paper specifies to use the complex to generate random points. However, comparison to a Matlab
 				// implementation showed a slower rate of convergence. 
@@ -374,43 +347,17 @@ namespace mhcpp
 				string msg = "Random point within hypercube bounds is unfeasible";
 				loggerWrite(msg, createTagConcat({ LoggerMhHelper::MkTuple("Message", msg), createTagCatComplexNo() }));
 				//return null;
-				auto newScore = evaluator.EvaluateScore(newPoint);
+				auto newScore = evaluator->EvaluateScore(newPoint);
 				IncrementEvaluations(1);
 				loggerWrite(newScore, createTagConcat({
 					LoggerMhHelper::MkTuple("Message", "Adding a random point in hypercube"),
 					createTagCatComplexNo() }
 				));
-				std::vector<IObjectiveScores<T>> newSimplexNelderMead = aggregate(newScore, withoutWorstPoint);
+				std::vector<IObjectiveScores<T>> newSimplexPopulation = aggregate(newScore, withoutWorstPoint);
 #ifdef _DEBUG
-				//CheckParameterFeasible(newSimplexNelderMead);
+				//CheckParameterFeasible(newSimplexPopulation);
 #endif
-				return fitnessAssignment.AssignFitness(newSimplexNelderMead);
-			}
-
-			std::vector<FitnessAssignedScores<double, T>> getSimplexNelderMead(const std::vector<IObjectiveScores<T>>& bufferComplex, std::vector<IObjectiveScores<T>>& leftOutFromSimplexNelderMead)
-			{
-				auto fitnessPoints = fitnessAssignment.AssignFitness(bufferComplex);
-#ifdef _DEBUG
-				//CheckParameterFeasible(fitnessPoints);
-#endif
-				FitnessAssignedScores<double, T>::Sort(fitnessPoints);
-#ifdef _DEBUG
-				//CheckParameterFeasible(fitnessPoints);
-#endif
-				std::vector<FitnessAssignedScores<double, T>> leftOut;
-				std::vector<FitnessAssignedScores<double, T>> subset = SampleFrom(*discreteRng, fitnessPoints, q, leftOut, false);
-#ifdef _DEBUG
-				//CheckParameterFeasible(leftOut);
-#endif
-				leftOutFromSimplexNelderMead.clear();
-				for (size_t i = 0; i < leftOut.size(); i++)
-				{
-					leftOutFromSimplexNelderMead.push_back(leftOut[i].Scores());
-				}
-#ifdef _DEBUG
-				//CheckParameterFeasible(leftOutFromSimplexNelderMead);
-#endif
-				return subset;
+				return fitnessAssignment.AssignFitness(newSimplexPopulation);
 			}
 
 			static std::vector<IObjectiveScores<T>> merge(const std::vector<FitnessAssignedScores<double, T>>& withoutWorstPoint, const FitnessAssignedScores<double, T>& worstPoint)
@@ -423,7 +370,7 @@ namespace mhcpp
 			std::vector<IObjectiveScores<T>> aggregatePoints(T newPoint, std::vector<IObjectiveScores<T>> withoutWorstPoint)
 			{
 				IncrementEvaluations(1);
-				return aggregate(evaluator.EvaluateScore(newPoint), withoutWorstPoint);
+				return aggregate(evaluator->EvaluateScore(newPoint), withoutWorstPoint);
 			}
 
 			std::vector<IObjectiveScores<T>> aggregate(const IObjectiveScores<T>& newPoint, std::vector<FitnessAssignedScores<double, T>> withoutWorstPoint)
@@ -470,7 +417,7 @@ namespace mhcpp
 				double expansionRatio = +1.5,
 				double contractionRatio = 0.5,
 				//ILoggerMh<T>* logger = nullptr,
-				const std::map<string, string>& tags = std::map<string, string>(), SceOptions options = SceOptions::RndInSubComplex)
+				const std::map<string, string>& tags = std::map<string, string>(), SceOptions options = SceOptions::RndInSimplexPopulation)
 			{
 				this->options = options;
 				if (!evaluator.IsCloneable()) throw std::logic_error("objective evaluator must be cloneable if calling this simplex constructor");
