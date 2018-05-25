@@ -1459,7 +1459,7 @@ namespace mhcpp
 				int alpha = 3,
 				int beta = 13,
 				int numShuffle = 15,
-				double trapezoidalPdfParam = 1.8,
+				double trapezoidalPdfParam = 1.0,
 				const std::map<string, string>& logTags = std::map<string, string>(),
 				SceOptions options = SceOptions::None, double reflectionRatio = -1.0, double contractionRatio = 0.5)
 			{
