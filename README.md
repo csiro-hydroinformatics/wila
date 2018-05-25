@@ -1,3 +1,6 @@
+
+master: [![Master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/master) devel: [![Devel build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/devel?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/devel)
+
 A simple metaheuristics framework to couple optimization and simulation models
 ==============================================
 
