@@ -33,7 +33,7 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="CustomPropertySheets">
-    <Import Project="$(USERPROFILE)\My Documents\wila.props" Condition="exists('$(USERPROFILE)\My Documents\wila.props')" />
+    <Import Project="$(USERPROFILE)\Documents\wila.props" Condition="exists('$(USERPROFILE)\Documents\wila.props')" />
     <Import Project="$(UserProfile)/vcpp_config.props" Condition="exists('$(UserProfile)/vcpp_config.props')" />
   </ImportGroup>
   <PropertyGroup>
