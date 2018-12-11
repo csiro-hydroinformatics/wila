@@ -30,6 +30,7 @@ bool assertValuesNotEqual(const Hc& a, const Hc& b);
 SceTc CreateCounterTermination(int maxCount);
 SceTc CreateMaxIterationTermination(int maxIterations);
 SceTc CreateMaxNumShuffle(int maxCount);
+SceTc CreateStdDevTermination(double maxRelativeStdDev, double maxHours = 0.1);
 Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<Hc > >&terminationCondition);
 
 template < typename THC = Hc >

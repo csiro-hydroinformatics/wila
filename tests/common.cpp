@@ -103,6 +103,12 @@ SceTc CreateMaxIterationTermination(int maxIterations)
 	return SceTc(c);
 }
 
+SceTc CreateStdDevTermination(double maxRelativeStdDev, double maxHours)
+{
+	PopulationStdDevTerminationCheck<Hc, Sce> c(maxRelativeStdDev, maxHours);
+	return SceTc(c);
+}
+
 void BuildTestHc(Hc& goal)
 {
 	goal.Define("a", 1, 2, 1);

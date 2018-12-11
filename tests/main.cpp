@@ -14,7 +14,7 @@
 #include<vld.h>
 #endif
 
-#define LOG_VALUE
+//#define LOG_VALUE
 
 #include "common.h"
 
@@ -37,6 +37,10 @@ using namespace mhcpp;
 using namespace mhcpp::random;
 using namespace mhcpp::optimization;
 using namespace mhcpp::utils;
+
+void setDefaults() {
+	mhcpp::threading::ThreadingOptions<>::DefaultMaxDegreeOfParallelism = 4;
+}
 
 TEST_CASE("Number formating is scientific by default", "[utils]") {
 	REQUIRE(ToString(1.23456789) == "1.234568e+00");
@@ -90,8 +94,41 @@ TEST_CASE("Basic hypercubes", "[sysconfig]") {
 	}
 }
 
-TEST_CASE("Calculation of a centroid", "[sysconfig]") {
+TEST_CASE("Calculation of the spread of a population of hypercubes", "[sysconfig]")
+{
+	std::vector<Hc> points;
 
+	double aMin = 1.1;
+	double bMin = 3.3;
+	double aMax = 2.2;
+	double bMax = 4.5;
+	std::function<Hc(double, double)> f = [&](double a, double b)
+	{
+		return createTestHc(a, b, aMin, bMin, aMax, bMax);
+	};
+	points.push_back(f(1.2, 2.54));
+	points.push_back(f(1.27, 2.56));
+	points.push_back(f(1.32, 2.87));
+
+	auto sdevs = mhcpp::GetStdDev(points);
+	//> sd(c(1.2, 1.27, 1.32))
+	//[1] 0.06027714
+	//> sd(c(2.54, 2.56, 2.87))
+	//[1] 0.1850225
+	REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(0.06027714, sdevs["a"], 1e-7);
+	REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(0.1850225, sdevs["b"], 1e-7);
+
+	auto rsdevs = mhcpp::GetRelativeSdev(points);
+	//> sd(c(1.2, 1.27, 1.32)) / (2.2 - 1.1)
+	//[1] 0.0547974
+	REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(0.0547974, rsdevs["a"], 1e-7);
+	//> sd(c(2.54, 2.56, 2.87)) / (4.5 - 3.3)
+	//[1] 0.1541854
+	REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(0.1541854, rsdevs["b"], 1e-7);
+}
+
+TEST_CASE("Calculation of a centroid", "[sysconfig]") 
+{
 	GIVEN("A population of hypercubes")
 	{
 		std::vector<Hc> points;
@@ -99,14 +136,14 @@ TEST_CASE("Calculation of a centroid", "[sysconfig]") {
 		points.push_back(createTestHc(1.2, 2.2));
 		auto c = Hc::GetCentroid(points);
 		WHEN("Population of two points") {
-			THEN("Expected barycentre"){
+			THEN("Expected barycentre") {
 				REQUIRE(assertHyperCube(c, 1.15, 2.15));
 			}
 		}
 		points.push_back(createTestHc(1.9, 2.6));
 		c = Hc::GetCentroid(points);
 		WHEN("Population of three points") {
-			THEN("Expected barycentre"){
+			THEN("Expected barycentre") {
 				REQUIRE(assertHyperCube(c, 1.4, 2.3));
 			}
 		}
@@ -472,7 +509,7 @@ TEST_CASE("URS RNG basics", "[rng]") {
 
 TEST_CASE("Complex for SCE, single objective", "[optimizer]") {
 
-
+	setDefaults();
 	using T = HyperCube < double > ;
 	int hcStart = T::NumInstances();
 	int m = 20;
@@ -555,7 +592,7 @@ TEST_CASE("Complex for SCE, single objective", "[optimizer]") {
 }
 
 TEST_CASE("SCE basic port", "[optimizer]") {
-
+	setDefaults();
 	GIVEN("A 2D Hypercube")
 	{
 		auto terminationCondition = CreateCounterTermination(100);
@@ -581,7 +618,7 @@ TEST_CASE("SCE basic port", "[optimizer]") {
 }
 
 TEST_CASE("exception handling is thread-safe", "[optimizer]") {
-
+	setDefaults();
 	GIVEN("An objective calculation that triggers an std::exception")
 	{
 		auto terminationCondition = CreateCounterTermination(100);
@@ -602,6 +639,7 @@ TEST_CASE("exception handling is thread-safe", "[optimizer]") {
 }
 
 TEST_CASE("Termination conditions", "[optimizer]") {
+	setDefaults();
 
 	// TODO (not thread safe now)
 	//GIVEN("A marginal improvement termination condition")
@@ -647,9 +685,27 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 			}
 		}
 	}
+
+	GIVEN("A maximum parameter population std dev as a termination condition")
+	{
+		auto terminationCondition = CreateStdDevTermination(1.0/100);
+		Hc goal;
+
+		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		WHEN("Optimizing") {
+			opt.AllowComplexPrematureTermination(false);
+			auto results = opt.Evolve();
+			REQUIRE(results.size() > 2);
+			THEN("The number of evaluations is more than TODO, but not too much") {
+				REQUIRE(opt.EvaluationCount() > 33); // initial pop size.
+				//REQUIRE(opt.EvaluationCount() < 1100);
+			}
+		}
+	}
 }
 
 TEST_CASE("Memory management", "[memory]") {
+	setDefaults();
 	auto terminationCondition = CreateWallClockTermination<>(5.0);
 	using T = HyperCube < double > ;
 	T goal;
@@ -670,6 +726,8 @@ TEST_CASE("Memory management", "[memory]") {
 
 TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
 	// This test checks that an segfault issue reported running on Linux is not present.
+
+	setDefaults();
 	auto terminationCondition = CreateWallClockTermination<>(14.4);
 	using T = HyperCube < double >;
 	T goal;
@@ -697,6 +755,7 @@ std::map<string, double> mkPt (double a, double b) {
 };
 
 TEST_CASE("SCE behavior is identical across OSes", "[rng]") {
+	setDefaults();
 	GIVEN("A 2D Hypercube")
 	{
 		auto terminationCondition = CreateMaxNumShuffle(1);

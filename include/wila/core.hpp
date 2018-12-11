@@ -870,6 +870,51 @@ namespace mhcpp
 		return centroid;
 	}
 
+	template<typename T=double>
+	double Sdev(const std::vector<T>& v) {
+		T sum = std::accumulate(std::begin(v), std::end(v), 0.0);
+		T m = sum / v.size();
+
+		T accum = 0.0;
+		std::for_each(std::begin(v), std::end(v), [&](const T d) {
+			accum += (d - m) * (d - m);
+		});
+		return std::sqrt(accum / (v.size() - 1));
+	}
+
+	template<typename THyperCube>
+	std::map<string,double> GetStdDev(const std::vector<THyperCube>& points)
+	{
+		size_t n = points.size();
+		if (n <= 1) throw std::logic_error("Cannot take standard deviation of empty or unary set of points");
+		vector<string> names = points[0].GetVariableNames();
+		vector<double> sdevs(names.size());
+		vector<double> v(n);
+		std::map<string, double> out;
+		for (size_t k = 0; k < names.size(); k++)
+		{
+			for (size_t i = 0; i < n; i++)
+				v[i] = points[i].GetValue(names[k]);
+			out[names[k]] = Sdev(v);
+		}
+		return out;
+	}
+
+	template<typename THyperCube>
+	std::map<string, double> GetRelativeSdev(const std::vector<THyperCube>& points)
+	{
+		std::map<string, double> sdevs = GetStdDev<THyperCube>(points);
+		auto p = points[0];
+		vector<string> names = p.GetVariableNames();
+		std::map<string, double> out;
+		for (size_t i = 0; i < names.size(); i++)
+		{
+			string k = names[i];
+			double delta = std::abs(p.GetMaxValue(k) - p.GetMinValue(k));
+			out[k] = sdevs[k] / delta; // Yes, may lead to nan...
+		}
+		return out;
+	}
 
 	template<typename T>
 	T Reflect(T point, T reference, T factor)

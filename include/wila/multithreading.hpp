@@ -41,6 +41,32 @@ using namespace std;
 
 namespace mhcpp
 {
+	namespace threading
+	{
+		/**
+		* \class	ThreadingOptions
+		*
+		* \brief	Global, process-wide default options relating to threading. 
+		*			Required to work within limits set e.g. by a slurm (cluster) job and not automagically detectable.
+		*/
+		template <typename T = double>
+		class ThreadingOptions
+		{
+		public:
+			static size_t DefaultMaxDegreeOfParallelism;
+		};
+
+		/**
+		* \brief	Global default for multi-threaded operations. 
+		*			If 0, up to algorithms to ; typically trying to detect hardware concurrency, 
+		*			but this present field is highly preferable for e.g. shared cluster-based jobs.
+		*/
+		size_t ThreadingOptions<double>::DefaultMaxDegreeOfParallelism = 0;
+	}
+}
+
+namespace mhcpp
+{
 	namespace utils
 	{
 		/**

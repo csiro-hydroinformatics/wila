@@ -1469,7 +1469,11 @@ namespace mhcpp
 				if (q > m)
 					throw std::logic_error("Q must be less than or equal to M");
 
-				SetMaxDegreeOfParallelismHardwareMinus(1);
+				size_t mt = mhcpp::threading::ThreadingOptions<double>::DefaultMaxDegreeOfParallelism;
+				if (mt > 0)
+					SetMaxDegreeOfParallelism(mt);
+				else
+					SetMaxDegreeOfParallelismHardwareMinus(1);
 
 				this->evaluator = evaluator;
 				this->candidateFactory = candidateFactory.Clone();
@@ -2273,6 +2277,70 @@ namespace mhcpp
 			int converge = 0;
 		};
 
+		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
+		class PopulationStdDevTerminationCheck :
+			public MaxWalltimeCheck<TSys, TEngine>
+		{
+		public:
+			/**
+			* \brief	Termination criteria based on the spread of parameter values in the a population
+			*
+			* \param 	maxRelativeStdDev	threshold of maximum relative standard deviation ( max_over_parameters(std dev / (max-min))) below which convergence is considered achieved
+			* \param 	values	maxHours  A fallback maximum wall time allowed for runtime
+			*/
+			PopulationStdDevTerminationCheck(double maxRelativeStdDev, double maxHours = 0.1) :
+				MaxWalltimeCheck<TSys, TEngine>(maxHours)
+			{
+				this->maxRelativeStdDev = maxRelativeStdDev;
+			}
+
+			virtual void Reset()
+			{
+				MaxWalltimeCheck<TSys, TEngine>::Reset();
+			}
+
+			virtual bool IsFinished(TEngine* engine)
+			{
+				return isFinished(engine);
+			}
+
+			virtual bool IsThreadSafe()
+			{
+				// When complexes check the SCE population, there are some race conditions, perhaps due to 
+				// use of move semantics in some classes. Too tricky to handle, and this check 
+				// should only be used in thread safe contexts.
+				return false;
+			}
+
+			virtual TerminationCheck<TSys, TEngine>* Clone() const
+			{
+				auto result = new PopulationStdDevTerminationCheck(this->maxRelativeStdDev, this->maxHours);
+				result->Reset();
+				return result;
+			}
+
+		protected:
+			bool isFinished(TEngine* engine)
+			{
+				if (engine == nullptr) throw std::invalid_argument(string("Argument must not be nullptr"));
+				IPopulation<double, TSys>* optimAlgorithm = dynamic_cast<IPopulation<double, TSys>*>(engine);
+				if (optimAlgorithm == nullptr) throw std::invalid_argument(string("Argument 'engine' is not a ") + typeid(IPopulation<double, TSys>).name());
+
+				if (MaxWalltimeCheck<TSys, TEngine>::HasReachedMaxTime())
+					return true;
+				auto currentPopulation = 
+					FitnessAssignedScores<double, TSys>::GetSystemConfigurations(optimAlgorithm->Population());
+				if (currentPopulation.size() < 2)
+					return false;
+				std::map<string, double> rsdevs = mhcpp::GetRelativeSdev(currentPopulation);
+
+				auto v = mhcpp::utils::GetValues(rsdevs);
+				double maxsd = *std::max_element(v.begin(), v.end());
+				return (maxsd <= this->maxRelativeStdDev);
+			}
+		private:
+			double maxRelativeStdDev;
+		};
 
 		template<typename TSys, typename TEngine = IEvolutionEngine<TSys>>
 		class MaxIterationTerminationCheck :
