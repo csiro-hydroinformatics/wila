@@ -22,7 +22,7 @@ build_script:
 
     perl -i.bak -n -e"print unless m{(pthread)}" CMakeLists.txt
 
-    conda install -y -c conda-forge tbb
+    conda install -y -c conda-forge tbb=2018_20171205
 
     mkdir catch
 
