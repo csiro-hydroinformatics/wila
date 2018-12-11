@@ -9,7 +9,8 @@ environment:
   # - PLATFORM: x86
 branches:
   only:
-  - devel, master
+  - devel
+  - master
   # Only devel branch temporarily, while setting up appveyor integration.
 build_script:
 - cmd: >-
