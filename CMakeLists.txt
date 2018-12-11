@@ -54,6 +54,7 @@ IF(DEFINED ENV{INTEL_CC_HOME})
   set(TBB_ROOT_DIR $ENV{INTEL_CC_HOME}/tbb)
 ENDIF()
 
+message ("Adding to CMAKE_MODULE_PATH: ${PROJECT_SOURCE_DIR}")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
@@ -61,7 +62,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
     INCLUDE(CodeCoverage)
 endif()
 
+if(NOT TBB_FOUND) # Trying to fix appveyor build, which seems not to find FindTBB.cmake. 
 find_package(TBB REQUIRED)
+ENDIF()
 #find_path(TBB_INCLUDE_DIRS concurrent_vector.h PATH_SUFFIXES tbb)
 #message ("The path to the TBB headers is ${TBB_INCLUDE_DIRS}")
 #find_library (TBB_LIBRARIES NAMES tbb)
