@@ -56,12 +56,16 @@ namespace mhcpp
 			static size_t DefaultMaxDegreeOfParallelism;
 		};
 
+		// After a few trial and errors found how to do the static initialisation in a header file.
+		//  Somewhat infered with limited understanding from https://stackoverflow.com/a/2342696/2752565
+
 		/**
 		* \brief	Global default for multi-threaded operations. 
 		*			If 0, up to algorithms to ; typically trying to detect hardware concurrency, 
 		*			but this present field is highly preferable for e.g. shared cluster-based jobs.
 		*/
-		size_t ThreadingOptions<double>::DefaultMaxDegreeOfParallelism = 0;
+		template <typename T> 
+		size_t ThreadingOptions<T>::DefaultMaxDegreeOfParallelism = 0;
 	}
 }
 
