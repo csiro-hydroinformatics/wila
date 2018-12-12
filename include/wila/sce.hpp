@@ -2333,6 +2333,7 @@ namespace mhcpp
 				if (currentPopulation.size() < 2)
 					return false;
 				std::map<string, double> rsdevs = mhcpp::GetRelativeSdev(currentPopulation);
+				rsdevs = mhcpp::utils::RemoveNotFinite(rsdevs);
 
 				auto v = mhcpp::utils::GetValues(rsdevs);
 				double maxsd = *std::max_element(v.begin(), v.end());

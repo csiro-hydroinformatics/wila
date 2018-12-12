@@ -125,6 +125,22 @@ TEST_CASE("Calculation of the spread of a population of hypercubes", "[sysconfig
 	//> sd(c(2.54, 2.56, 2.87)) / (4.5 - 3.3)
 	//[1] 0.1541854
 	REQUIRE_WITHIN_ABSOLUTE_TOLERANCE(0.1541854, rsdevs["b"], 1e-7);
+
+
+	std::map<string, double> dict;
+	dict["a"] = 1.0;
+	dict["b"] = std::numeric_limits<double>::quiet_NaN();
+	dict["bb"] = -std::numeric_limits<double>::quiet_NaN();
+	dict["c"] = -std::numeric_limits<double>::infinity();
+	dict["d"] = std::numeric_limits<double>::infinity();
+	dict["e"] = 11.0;
+	dict["f"] = 123.0;
+	rsdevs = mhcpp::utils::RemoveNotFinite(dict);
+
+	auto keys = mhcpp::utils::GetKeys(rsdevs);
+
+	REQUIRE( requireEqual(keys, std::vector<string>({ "a","e", "f" })) );
+
 }
 
 TEST_CASE("Calculation of a centroid", "[sysconfig]") 

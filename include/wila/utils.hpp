@@ -122,6 +122,16 @@ namespace mhcpp
 			return values;
 		}
 
+		template<typename K>
+		const std::map<K, double> RemoveNotFinite(const std::map<K, double>& aMap)
+		{
+			std::map<K, double> res;
+			for (auto& x : aMap)
+				if(!std::isnan(x.second) && std::isfinite(x.second))
+					res[x.first] = x.second;
+			return res;
+		}
+
 		template<typename K = string, typename V = string>
 		static std::vector<V> GetValues(const std::map<K, V>& dict, const std::vector<K>& keys)
 		{
