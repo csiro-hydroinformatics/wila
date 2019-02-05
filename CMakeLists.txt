@@ -72,6 +72,7 @@ message ("The path to the Thread Building Blocks (tbb) library is ${TBB_LIBRARIE
 
 find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
 find_path (cinterop_INCLUDE_DIRS cinterop/common_c_interop.h)
+find_path (catch_INCLUDE_DIRS NAMES catch/catch.hpp PATHS )
 
 INCLUDE_DIRECTORIES(
     ./include
