@@ -934,9 +934,23 @@ namespace mhcpp
 		auto varnames = centre.GetVariableNames();
 		for (auto& v : varnames)
 		{
-			T mx = from.GetMaxValue();
-			T mn = from.GetMinValue();
-			if (abs(mx - mn) > (100. * std::numeric_limits<T>::epsilon())) {
+			T mx = from.GetMaxValue(v);
+			T mn = from.GetMinValue(v);
+			T epsilon;
+			if (mx != 0.0)
+			{
+				// https://stackoverflow.com/questions/9999221/double-precision-decimal-places
+				// TODO check if macros are available DBL_DIG? Other std::numeric_limits things?
+				epsilon = std::abs((T)1e-13 * mx);
+			}
+			else
+			{
+				// HACK: use an absolute value tolerance even for zero valued bounds
+				// This is potentially problematic but less likely to be an issue than letting the reflection go ahead unchecked.
+				// TODO: rethink. 
+				epsilon = (T)1e-13;
+			}
+			if (std::abs(mx - mn) > epsilon) {
 				double newVal = mhcpp::Reflect(from.GetValue(v), centre.GetValue(v), factor);
 				result.SetValue(v, newVal);
 			}
@@ -979,14 +993,14 @@ namespace mhcpp
 		string GetConfigurationDescription() const { return ""; }
 		void ApplyConfiguration(void* system) {}
 
-		static HyperCube GetCentroid(const std::vector<HyperCube>& points)
+		static HyperCube<T> GetCentroid(const std::vector<HyperCube<T>>& points)
 		{
 			return mhcpp::GetCentroid<HyperCube<T>>(points);
 		}
 
-		HyperCube HomotheticTransform(const HyperCube& from, T factor)
+		HyperCube<T> HomotheticTransform(const HyperCube<T>& from, T factor)
 		{
-			return mhcpp::HomotheticTransform<HyperCube<T>>(*this, from, factor);
+			return mhcpp::HomotheticTransform<HyperCube<T>, T>(*this, from, factor);
 		}
 
 		virtual bool IsFeasible() const
@@ -994,8 +1008,8 @@ namespace mhcpp
 			auto varnames = GetVariableNames();
 			for (auto& v : varnames)
 			{
-				T mx = this->def.at(v).Max();
-				T mn = this->def.at(v).Min();
+				T mx = this->def.at(v).Max;
+				T mn = this->def.at(v).Min;
 				if (std::abs(mx - mn) >= (std::numeric_limits<T>::epsilon() * 100))
 				{
 					if (!this->def.at(v).IsFeasible()) return false;
