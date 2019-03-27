@@ -394,7 +394,12 @@ namespace mhcpp
 				double d = Urand();
 				//if (d > 1 || d < 0)
 				//	throw std::logic_error("[0-1] uniform distribution, but got a sample out of this interval");
-				rt.SetValue(vname, min + d * (max - min));
+				if (abs(min - max) <= (std::numeric_limits<double>::epsilon()*100.) )
+				{
+					rt.SetValue(vname, min);
+				} else {
+					rt.SetValue(vname, min + d * (max - min));
+				}
 			}
 			return rt;
 		}
@@ -406,8 +411,8 @@ namespace mhcpp
 			TSysConfig bounds(t);
 			for (auto& vname : bounds.GetVariableNames())
 			{
-				double min = std::numeric_limits<double>::lowest();
-				double max = std::numeric_limits<double>::max();
+				double min = std::numeric_limits<double>::lowest();		// should this be std::numeric_limits<T>::lowest() ?
+				double max = std::numeric_limits<double>::max();		// should this be std::numeric_limits<T>::max() ?
 				for (size_t i = 0; i < population.size(); i++)
 				{
 					double x = population[i].GetValue(vname);
@@ -922,15 +927,19 @@ namespace mhcpp
 		return reference + ((point - reference) * factor);
 	}
 
-	template<typename THyperCube>
+	template<typename THyperCube, typename T>
 	THyperCube HomotheticTransform(const THyperCube& centre, const THyperCube& from, double factor)
 	{
 		THyperCube result(from);
 		auto varnames = centre.GetVariableNames();
 		for (auto& v : varnames)
 		{
-			double newVal = mhcpp::Reflect(from.GetValue(v), centre.GetValue(v), factor);
-			result.SetValue(v, newVal);
+			T mx = from.GetMaxValue();
+			T mn = from.GetMinValue();
+			if (abs(mx - mn) > (100. * std::numeric_limits<T>::epsilon())) {
+				double newVal = mhcpp::Reflect(from.GetValue(v), centre.GetValue(v), factor);
+				result.SetValue(v, newVal);
+			}
 		}
 		return result;
 	}
@@ -984,7 +993,14 @@ namespace mhcpp
 		{
 			auto varnames = GetVariableNames();
 			for (auto& v : varnames)
-				if (!this->def.at(v).IsFeasible()) return false;
+			{
+				T mx = this->def.at(v).Max();
+				T mn = this->def.at(v).Min();
+				if (std::abs(mx - mn) >= (std::numeric_limits<T>::epsilon() * 100))
+				{
+					if (!this->def.at(v).IsFeasible()) return false;
+				}
+			}
 			return true;
 		}
 
