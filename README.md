@@ -1,35 +1,34 @@
 
-master: [![Master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/master) devel: [![Devel build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/devel?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/devel)
+# A simple metaheuristics framework to couple optimization and simulation models
 
-A simple metaheuristics framework to couple optimization and simulation models
-==============================================
+master: [![master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/master) testing: [![testing build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/testing?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/devel)
 
-# Purpose
+## Purpose
 
 This framework is designed to incorporate the state of the art in metaheuristics software frameworks, yet limiting the software complexity to users who are interested in applying it without advanced knowledge of software or optimisation research. It has been used mainly to calibrate environmental models, mostly hydrology models.
 
 The purpose of this framework is to define a set of programming interface, rather than replicate optimisation algorithms found in other optimisation frameworks.
 
-# License
+## License
 
 This software is released under the LGPL v3. See LICENSE.
 
-# Requirements
+## Requirements
 
 This is written in C++ using some features from the C++11 standard. It is known to compile with:
 
 * GCC version 4.8 or above
 * Visual C++ as from Visual Studio 2015, or above.
 
-# Getting started
+## Getting started
 
-This framework is (almost) header-only, so you do not build a shared binary library. 
+This framework is (almost) header-only, so you do not build a shared binary library.
 
-## Setting dependencies
+### Setting dependencies
 
 You will need the following dependencies available:
 
-### Windows
+#### Windows
 
 * [Boost](http://www.boost.org/). You may choose to set up boost on your machine as you wish and sort out the compilation/path settings as you wish. The following is but one approach, is prescriptive, albeit one based on experience to limit some annoyances.
  * Download the Boost installers from e.g. [1.61](https://sourceforge.net/projects/boost/files/boost-binaries/1.61.0) at the time of writing. You will find files such as boost_1_61_0-msvc-12.0-64.exe (or more recent than "12.0" depending on the version of visual studio you use. Download for 64 and/or 32 bits.
@@ -88,7 +87,7 @@ You will find in the top directory of wila the file [./wila.props.in](./wila.pro
 
 Open "wila\tests\mhcpptest.vcxproj". Make sure you are in the appropriate configuration (Debug/x64) and it should compile.
 
-### Linux
+#### Linux
 
 * [Boost](http://www.boost.org/)
 * Threading Building Blocks (https://www.threadingbuildingblocks.org/). 
@@ -107,11 +106,11 @@ make
 make install
 ```
 
-## Documentation
+### Documentation
 
 You can find some introductory sample [in the doc folder, Getting Started](./doc/GettingStarted.md)
 
-## Unit tests
+### Unit tests
 
 The step above will also try and build the test application. To run the tests:
 
@@ -119,11 +118,11 @@ The step above will also try and build the test application. To run the tests:
 ./wila_tests
 ```
 
-## Further Documentation
+### Further Documentation
 
 TODO will probably set up a github page
 
-# What's the name of the repo about?
+## What's the name of the repo about
 
 This is from Slavic mythology, as the description was a metaphor somewhat appropriate for the field of optimisation.
 

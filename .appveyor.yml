@@ -9,9 +9,9 @@ environment:
   # - PLATFORM: x86
 branches:
   only:
-  - devel
+  - testing
   - master
-  # Only devel branch temporarily, while setting up appveyor integration.
+
 build_script:
 - cmd: >-
     set CONDA_PREFIX=C:\Miniconda3
