@@ -791,7 +791,7 @@ namespace mhcpp
 
 		string ToString() const
 		{
-			return FitnessValue().ToString() + ", " + Scores.ToString();
+			return FitnessValue().ToString() + ", " + Scores().ToString();
 		}
 
 	private:
