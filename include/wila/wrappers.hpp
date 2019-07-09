@@ -194,7 +194,7 @@ namespace mhcpp
 
 			HypercubeWrapper HomotheticTransform(const HypercubeWrapper& from, double factor)
 			{
-				return mhcpp::HomotheticTransform<HypercubeWrapper>(*this, from, factor);
+				return mhcpp::HomotheticTransform<HypercubeWrapper, double>(*this, from, factor);
 			}
 
 			virtual bool IsFeasible() const
