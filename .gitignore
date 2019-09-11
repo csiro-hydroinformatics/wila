@@ -39,3 +39,6 @@ tests/Release/*
 .vscode/
 *.opendb
 *.ipch
+
+# CMake default directory
+build/
