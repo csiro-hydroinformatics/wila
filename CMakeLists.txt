@@ -10,7 +10,7 @@ options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Coverage Debug Release
 RelWithDebInfo MinSizeRel.")
 ENDIF()
 
-SET (VERSION 0.5.8)
+SET (VERSION 0.5.9)
 
 ## start setting
 SET (this_target wila)
