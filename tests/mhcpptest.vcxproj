@@ -54,6 +54,7 @@
     <ClInclude Include="..\include\wila\random.hpp" />
     <ClInclude Include="..\include\wila\sce.h" />
     <ClInclude Include="..\include\wila\sce.hpp" />
+    <ClInclude Include="..\include\wila\urs.hpp" />
     <ClInclude Include="..\include\wila\utils.hpp" />
     <ClInclude Include="..\include\wila\wrappers.hpp" />
     <ClInclude Include="common.h" />

@@ -83,19 +83,19 @@ bool assertValuesNotEqual(const Hc& a, const Hc& b)
 		(!sameValues(a.GetVariableNames(), a, b));
 }
 
-SceTc CreateCounterTermination(int maxCount)
-{
-	CounterTestFinished<Hc, Sce> c(maxCount);
-	SceTc terminationCondition(c);
-	return terminationCondition;
-}
+//SceTc CreateCounterTermination(int maxCount)
+//{
+//	CounterTestFinished<Hc, Sce> c(maxCount);
+//	SceTc terminationCondition(c);
+//	return terminationCondition;
+//}
 
-SceTc CreateMaxNumShuffle(int maxCount)
-{
-	MaxNumberSceShuffles<Hc, Sce> c(maxCount);
-	SceTc terminationCondition(c);
-	return terminationCondition;
-}
+//SceTc CreateMaxNumShuffle(int maxCount)
+//{
+//	MaxNumberSceShuffles<Hc, Sce> c(maxCount);
+//	SceTc terminationCondition(c);
+//	return terminationCondition;
+//}
 
 SceTc CreateMaxIterationTermination(int maxIterations)
 {
@@ -128,7 +128,7 @@ CandidateFactorySeed<Hc> CreateCandidateFactorySeed(unsigned int seed, const Hc&
 	return seeding;
 }
 
-Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
+Sce CreateSceQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Sce>& terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension<SceParameters>(5, 20);
 	// TODO: check above
@@ -136,10 +136,21 @@ Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Sce>&terminati
 	sceParams.Pmin = 3;
 	BuildTestHc(goal);
 	Hc hc = goal;
-	TopologicalDistance<Hc>  * evaluator = new TopologicalDistance<Hc>(goal);
+	TopologicalDistance<Hc>* evaluator = new TopologicalDistance<Hc>(goal);
 	CandidateFactorySeed<Hc> seeding(0, hc);
 
 	Sce opt(evaluator, seeding, terminationCondition, sceParams);
+	return opt;
+}
+
+Urs CreateUrsQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Urs>& terminationCondition)
+{
+	BuildTestHc(goal);
+	Hc hc = goal;
+	TopologicalDistance<Hc>* evaluator = new TopologicalDistance<Hc>(goal);
+	CandidateFactorySeed<Hc> seeding(0, hc);
+
+	Urs opt(evaluator, seeding, terminationCondition);
 	return opt;
 }
 
@@ -165,7 +176,7 @@ IObjectiveEvaluator<Hc> * ThrowsException::Clone() const
 	return new ThrowsException(*this);
 }
 
-Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
+Sce CreateSceQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension<SceParameters>(5, 20);
 	// TODO: check above
@@ -181,7 +192,7 @@ Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<Hc,
 	return opt;
 }
 
-Sce* CreateQuadraticGoalPtr(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
+Sce* CreateSceQuadraticGoalPtr(Hc& goal, const ITerminationCondition<Hc, Sce>&terminationCondition)
 {
 	SceParameters sceParams = CreateSceParamsForProblemOfDimension<SceParameters>(5, 20);
 	// TODO: check above

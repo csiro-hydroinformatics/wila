@@ -19,6 +19,7 @@
 #include "common.h"
 
 #include <wila/interop_c_cpp.hpp>
+#include "wila/urs.hpp"
 
 #define REQUIRE_WITHIN_ABSOLUTE_TOLERANCE( expected, actual, delta) REQUIRE( (abs(expected - actual) < delta) )
 
@@ -613,7 +614,7 @@ TEST_CASE("SCE basic port", "[optimizer]") {
 	{
 		auto terminationCondition = CreateCounterTermination(100);
 		Hc goal;
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoal(goal, terminationCondition);
 		WHEN("optimizing single-thread") {
 			opt.UseMultiThreading(false);
 			auto results = opt.Evolve();
@@ -639,7 +640,7 @@ TEST_CASE("exception handling is thread-safe", "[optimizer]") {
 	{
 		auto terminationCondition = CreateCounterTermination(100);
 		Hc goal;
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoalThrowsException(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoalThrowsException(goal, terminationCondition);
 		WHEN("optimizing multi-threaded") {
 			opt.UseMultiThreading(true);
 			string msg;
@@ -663,7 +664,7 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 	{
 		auto terminationCondition = CreateWallClockTermination<>(5.0);
 		Hc goal;
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoal(goal, terminationCondition);
 
 		WHEN("") {
 			auto results = opt.Evolve();
@@ -679,7 +680,7 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 		auto terminationCondition = CreateMaxIterationTermination(1000);
 		Hc goal;
 
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoal(goal, terminationCondition);
 		WHEN("Complexes are allowed to check on termination criterion, and the criterion is thread safe") {
 			REQUIRE(terminationCondition.IsThreadSafe());
 			opt.AllowComplexPrematureTermination(true);
@@ -707,7 +708,7 @@ TEST_CASE("Termination conditions", "[optimizer]") {
 		auto terminationCondition = CreateStdDevTermination(1.0/100);
 		Hc goal;
 
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoal(goal, terminationCondition);
 		WHEN("Optimizing") {
 			opt.AllowComplexPrematureTermination(false);
 			auto results = opt.Evolve();
@@ -726,7 +727,7 @@ TEST_CASE("Memory management", "[memory]") {
 	using T = HyperCube < double > ;
 	T goal;
 	int hcBeforeCreation = T::NumInstances();
-	ShuffledComplexEvolution<T>* opt = CreateQuadraticGoalPtr(goal, terminationCondition);
+	ShuffledComplexEvolution<T>* opt = CreateSceQuadraticGoalPtr(goal, terminationCondition);
 	int hcAfterCreation = T::NumInstances();
 	//REQUIRE(hcStart == hcEnd);
 	int hcBeforeEvolve = T::NumInstances();
@@ -755,7 +756,7 @@ TEST_CASE("Multiple evolve runs in sequence", "[optimizer]") {
 		REQUIRE(iterNum == iterNum); // hack to check via cmd line in verbose mode.
 		int hcNewLoopCount = T::NumInstances();
 		REQUIRE(hcInitialCount == hcNewLoopCount);
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoal(goal, terminationCondition);
 		size_t nCores = opt.GetMaxHardwareConcurrency();
 		size_t nThreads = std::min((size_t)3, nCores - 1);
 		opt.SetMaxDegreeOfParallelism(nThreads);
@@ -776,7 +777,7 @@ TEST_CASE("SCE behavior is identical across OSes", "[rng]") {
 	{
 		auto terminationCondition = CreateMaxNumShuffle(1);
 		Hc goal;
-		ShuffledComplexEvolution<Hc> opt = CreateQuadraticGoal(goal, terminationCondition);
+		ShuffledComplexEvolution<Hc> opt = CreateSceQuadraticGoal(goal, terminationCondition);
 		double delta = 1e-5;
 
 		WHEN("Initializing the population of points") {
@@ -940,4 +941,31 @@ TEST_CASE("Optimizer log data interop creation/disposal")
 	cinterop::disposal::dispose_of(*log);
 	delete log;
 
+}
+
+TEST_CASE("URS port for perf analysis", "[optimizer]") {
+	setDefaults();
+	using mhcpp::optimization::UniformRandomSamplingOptimizer;
+	GIVEN("A 2D Hypercube")
+	{
+		auto terminationCondition = CreateCounterTermination<Urs>(10);
+		Hc goal;
+		UniformRandomSamplingOptimizer<Hc> opt = CreateUrsQuadraticGoal(goal, terminationCondition);
+		WHEN("optimizing single-thread") {
+			opt.UseMultiThreading(false);
+			auto results = opt.Evolve();
+			REQUIRE(results.size() > 0);
+			//results.PrintTo(std::cout);
+			auto first = results[0];
+			REQUIRE(first.ObjectiveCount() == 1);
+		}
+		WHEN("optimizing multi-threaded") {
+			opt.UseMultiThreading(true);
+			auto results = opt.Evolve();
+			REQUIRE(results.size() > 0);
+			//results.PrintTo(std::cout);
+			auto first = results[0];
+			REQUIRE(first.ObjectiveCount() == 1);
+		}
+	}
 }

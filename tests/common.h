@@ -4,6 +4,7 @@
 
 #include "wila/core.hpp"
 #include "wila/sce.hpp"
+#include "wila/urs.hpp"
 
 using namespace mhcpp;
 using namespace mhcpp::optimization;
@@ -11,6 +12,9 @@ using namespace mhcpp::optimization;
 using Hc = HyperCube<double>;
 using Sce = ShuffledComplexEvolution<Hc>;
 using SceTc = Sce::TerminationCondition;
+using Urs = UniformRandomSamplingOptimizer<Hc>;
+using UrsTc = Urs::TerminationCondition;
+
 
 void BuildTestHc(Hc& goal);
 Hc CreateTestHc();
@@ -27,11 +31,26 @@ bool sameMaxValues(const std::vector<std::string>& keys, const Hc& a, const Hc& 
 bool assertEqual(const Hc& a, const Hc& b);
 bool assertValuesNotEqual(const Hc& a, const Hc& b);
 
-SceTc CreateCounterTermination(int maxCount);
+template <typename T=Sce>
+typename T::TerminationCondition CreateMaxNumShuffle(int maxCount)
+{
+	MaxNumberSceShuffles<Hc, T> c(maxCount);
+	typename T::TerminationCondition terminationCondition(c);
+	return terminationCondition;
+}
+
+template <typename T = Sce>
+typename T::TerminationCondition CreateCounterTermination(int maxCount)
+{
+	CounterTestFinished<Hc, T> c(maxCount);
+	typename T::TerminationCondition terminationCondition(c);
+	return terminationCondition;
+}
+
 SceTc CreateMaxIterationTermination(int maxIterations);
-SceTc CreateMaxNumShuffle(int maxCount);
 SceTc CreateStdDevTermination(double maxRelativeStdDev, double maxHours = 0.1);
-Sce CreateQuadraticGoal(Hc& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<Hc > >&terminationCondition);
+Sce CreateSceQuadraticGoal(Hc& goal, const ITerminationCondition<HyperCube < double >, ShuffledComplexEvolution<Hc > >&terminationCondition);
+Urs CreateUrsQuadraticGoal(Hc& goal, const ITerminationCondition<Hc, Urs>& terminationCondition);
 
 template < typename THC = Hc >
 typename ShuffledComplexEvolution<THC>::TerminationCondition CreateWallClockTermination(double seconds)
@@ -56,8 +75,8 @@ private:
 	Hc goal;
 };
 
-Sce CreateQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<HyperCube < double >, Sce>&terminationCondition);
-Sce* CreateQuadraticGoalPtr(Hc& goal, const ITerminationCondition<HyperCube < double >, Sce>&terminationCondition);
+Sce CreateSceQuadraticGoalThrowsException(Hc& goal, const ITerminationCondition<HyperCube < double >, Sce>&terminationCondition);
+Sce* CreateSceQuadraticGoalPtr(Hc& goal, const ITerminationCondition<HyperCube < double >, Sce>&terminationCondition);
 
 template<typename T>
 bool requireEqual(const vector<T>& a, const vector<T>& b)
