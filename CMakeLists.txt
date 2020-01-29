@@ -37,6 +37,7 @@ SET(${this_target}_HEADER_FILES
     include/wila/random.hpp
     include/wila/sce.h
     include/wila/sce.hpp
+    include/wila/urs.hpp
     include/wila/utils.hpp
     include/wila/wrappers.hpp
 )
