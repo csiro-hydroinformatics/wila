@@ -187,6 +187,7 @@ namespace mhcpp
 						return packageResults(best);
 					}
 				}
+				return packageResults(best); // compiler warning otherwise
 			}
 
 			size_t PopulationSize() const
