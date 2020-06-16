@@ -11,7 +11,7 @@ The purpose of this framework is to define a set of programming interface, rathe
 
 ## License
 
-This software is released under the LGPL v3. See LICENSE.
+This software is released under the CSIRO Open Source Software Licence Agreement (variation of the BSD / MIT License). See LICENSE.
 
 ## Requirements
 
