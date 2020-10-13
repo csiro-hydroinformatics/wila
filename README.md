@@ -1,17 +1,17 @@
 
 # A simple metaheuristics framework to couple optimization and simulation models
 
-master: [![master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/master) testing: [![testing build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/testing?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/devel)
+master: [![master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/csiro-hydroinformatics/wila/branch/master) testing: [![testing build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/testing?svg=true)](https://ci.appveyor.com/project/csiro-hydroinformatics/wila/branch/devel)
 
 ## Purpose
 
 This framework is designed to incorporate the state of the art in metaheuristics software frameworks, yet limiting the software complexity to users who are interested in applying it without advanced knowledge of software or optimisation research. It has been used mainly to calibrate environmental models, mostly hydrology models.
 
-The purpose of this framework is to define a set of programming interface, rather than replicate optimisation algorithms found in other optimisation frameworks.
+The purpose of this framework is to define a set of programming interfaces, rather than replicate optimisation algorithms found in other optimisation frameworks.
 
 ## License
 
-This software is released under the CSIRO Open Source Software Licence Agreement (variation of the BSD / MIT License). See LICENSE.
+This software is released under the CSIRO Open Source Software Licence Agreement (variation of the BSD / MIT License). See [LICENSE](./LICENSE).
 
 ## Requirements
 

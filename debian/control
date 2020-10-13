@@ -1,0 +1,43 @@
+Source: libwila-dev
+Maintainer: Jean-Michel Perraud <per202@csiro.au>
+Section: libdevel
+# Testsuite: autopkgtest-pkg-r
+Priority: optional
+Build-Depends: cmake,
+               debhelper (>= 13~),
+	           debhelper-compat (= 13),
+               catch,
+               libboost-date-time-dev,
+               libboost-system-dev,
+               libtbb-dev,
+               libboost-threadpool-dev,
+               libcinterop-dev,
+               libconfig-utils-dev
+Standards-Version: 4.5.0
+Homepage: https://github.com/csiro-hydroinformatics/threadpool
+Rules-Requires-Root: no
+
+Package: libwila-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: ${misc:Depends},
+         libboost-date-time-dev,
+         libboost-system-dev,
+         libtbb-dev,
+         libboost-threadpool-dev,
+         libcinterop-dev,
+         libconfig-utils-dev
+Conflicts: libwila-dev
+Description: Metaheuristics optimisation framework
+ This framework is designed to incorporate the state of the art
+ in metaheuristics software frameworks, yet limiting the software 
+ complexity to users who are interested in applying it without 
+ advanced knowledge of software or optimisation research. 
+ It has been used mainly to calibrate environmental models, 
+ mostly hydrology models.
+ .
+ The purpose of this framework is to define a set of programming 
+ interfaces, rather than replicate optimisation algorithms found 
+ in other optimisation frameworks.
+ 

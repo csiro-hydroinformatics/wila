@@ -10,16 +10,19 @@ options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Coverage Debug Release
 RelWithDebInfo MinSizeRel.")
 ENDIF()
 
-SET (VERSION 0.6)
+set(TARGET_LIB_NAME wila)
+SET (this_target ${TARGET_LIB_NAME})
 
-## start setting
-SET (this_target wila)
-PROJECT(${this_target})
+set(TARGET_MAJOR 0)
+set(TARGET_MINOR 7)
+set(TARGET_RELEASE 1)
+# set(TARGET_NAME libmoirai${TARGET_MAJOR}${TARGET_MINOR})
+set(TARGET_VERSION ${TARGET_MAJOR}.${TARGET_MINOR}.${TARGET_RELEASE})
+SET (VERSION ${TARGET_VERSION})
 
-## section: source files
-# Add your source files here (one file per line), please SORT in alphabetical order for future maintenance
-SET (${this_target}_SOURCE_FILES
-)
+PROJECT(${this_target} VERSION ${TARGET_VERSION} DESCRIPTION "A simple metaheuristics framework to couple optimization and simulation models")
+
+include(GNUInstallDirs)
 
 ## section: header files
 # Add your header files here(one file per line), please SORT in alphabetical order for future maintenance!
@@ -40,6 +43,12 @@ SET(${this_target}_HEADER_FILES
     include/wila/urs.hpp
     include/wila/utils.hpp
     include/wila/wrappers.hpp
+)
+
+## section: source files
+# Add your source files here (one file per line), please SORT in alphabetical order for future maintenance
+# 2020-10 this is for legacy reasons; added perhaps for needs by the australian BoM
+SET (${this_target}_SOURCE_FILES
 )
 
 # Use the FindBoost macro to find boost.
@@ -94,6 +103,7 @@ LIST(APPEND ${this_target}_SOURCE_FILES ${${this_target}_HEADER_FILES})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 ## section: add target
+# 2020-10 AS_SHARED_LIB is deprecated but kept for legacy reasons; may address needs of the australian BoM.
 IF (AS_SHARED_LIB)
     ADD_LIBRARY(${this_target} SHARED ${${this_target}_SOURCE_FILES} )
     set_target_properties(${this_target} PROPERTIES LINKER_LANGUAGE CXX)
@@ -111,7 +121,12 @@ TARGET_LINK_LIBRARIES(wila_tests
 
 # Files to be installed
 INSTALL(FILES ${${this_target}_HEADER_FILES} DESTINATION include/wila)
-INSTALL(TARGETS wila_tests RUNTIME DESTINATION bin)
+configure_file(${TARGET_LIB_NAME}.pc.in ${TARGET_LIB_NAME}.pc @ONLY)
+# INSTALL(TARGETS wila_tests RUNTIME DESTINATION bin)
+install(FILES ${CMAKE_BINARY_DIR}/${TARGET_LIB_NAME}.pc
+    # DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig) from examplar, but this appears not prevalent, most I see are under /usr/lib/x86_64-linux-gnu/pkgconfig, so:
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+    # The above also prevents a lintian error
 
 ########### Add uninstall target ###############
 # uninstall target
@@ -132,7 +147,7 @@ set(CPACK_PACKAGE_NAME "wila")
 set(CPACK_RPM_PACKAGE_RELEASE 1)
 set(CPACK_PACKAGE_RELEASE ${CPACK_RPM_PACKAGE_RELEASE})
 set(CPACK_PACKAGE_CONTACT "J-M <jean-michel.perraud@csiro.au>")
-set(CPACK_PACKAGE_VENDOR "https://github.com/jmp75/wila")
+set(CPACK_PACKAGE_VENDOR "https://github.com/csiro-hydroinformatics/wila")
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
