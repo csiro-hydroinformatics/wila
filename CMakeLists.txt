@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.12)
 
 IF(DEFINED CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of
@@ -109,7 +109,7 @@ TARGET_LINK_LIBRARIES(wila_tests
     ${TBB_LIBRARIES}
 )
 
-# Files to be installed - used by packaging stuff below
+# Files to be installed
 INSTALL(FILES ${${this_target}_HEADER_FILES} DESTINATION include/wila)
 INSTALL(TARGETS wila_tests RUNTIME DESTINATION bin)
 

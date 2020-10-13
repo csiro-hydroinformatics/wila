@@ -38,7 +38,7 @@ build_script:
 
     unzip master
 
-    curl -L -O https://github.com/jmp75/rcpp-interop-commons/archive/devel.zip
+    curl -L -O https://github.com/csiro-hydroinformatics/rcpp-interop-commons/archive/master.zip
 
     unzip devel
 
