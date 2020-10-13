@@ -40,7 +40,7 @@ build_script:
 
     curl -L -O https://github.com/csiro-hydroinformatics/rcpp-interop-commons/archive/master.zip
 
-    unzip devel
+    unzip master
 
     if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2015" set CMAKE_GENERATOR=Visual Studio 14 2015
 
@@ -52,7 +52,7 @@ build_script:
 
     if "%PLATFORM%" == "x64" set CMAKE_GENERATOR=%CMAKE_GENERATOR% Win64
 
-    cmake -G "%CMAKE_GENERATOR%" --target ALL_BUILD -DBoost_USE_STATIC_LIBS=ON -Dcatch_INCLUDE_DIRS=C:\projects\wila\catch -DBOOST_ROOT=%BOOST_ROOT% -DBoost_INCLUDE_DIRS=%BOOST_ROOT%\include -DTHREADPOOL_INCLUDE_DIRS=threadpool-master -Dcinterop_INCLUDE_DIRS=rcpp-interop-commons-devel\include -DTBB_LIBRARIES=%CONDA_PREFIX%\Library\lib -DTBB_INCLUDE_DIRS=%CONDA_PREFIX%\Library\include -DCMAKE_BUILD_TYPE=Release ..
+    cmake -G "%CMAKE_GENERATOR%" --target ALL_BUILD -DBoost_USE_STATIC_LIBS=ON -Dcatch_INCLUDE_DIRS=C:\projects\wila\catch -DBOOST_ROOT=%BOOST_ROOT% -DBoost_INCLUDE_DIRS=%BOOST_ROOT%\include -DTHREADPOOL_INCLUDE_DIRS=threadpool-master -Dcinterop_INCLUDE_DIRS=rcpp-interop-commons-master\include -DTBB_LIBRARIES=%CONDA_PREFIX%\Library\lib -DTBB_INCLUDE_DIRS=%CONDA_PREFIX%\Library\include -DCMAKE_BUILD_TYPE=Release ..
 
     msbuild wila_tests.vcxproj /p:Platform="%PLATFORM%" /p:Configuration=Release
 test_script:

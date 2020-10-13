@@ -1,7 +1,7 @@
 
 # A simple metaheuristics framework to couple optimization and simulation models
 
-master: [![master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/csiro-hydroinformatics/wila/branch/master) testing: [![testing build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/testing?svg=true)](https://ci.appveyor.com/project/csiro-hydroinformatics/wila/branch/devel)
+master: [![master build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/master?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/master) testing: [![testing build status](https://ci.appveyor.com/api/projects/status/9h5snds4ymuv4ynq/branch/testing?svg=true)](https://ci.appveyor.com/project/jmp75/wila/branch/devel)
 
 ## Purpose
 
