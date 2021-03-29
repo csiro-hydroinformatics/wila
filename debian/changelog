@@ -1,4 +1,4 @@
-libwila-dev (0.7-1) unstable; urgency=medium
+wila (0.7-1) unstable; urgency=medium
 
   * Initial release, testing debian packaging
 

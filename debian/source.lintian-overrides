@@ -1,5 +1,5 @@
-libwila-dev source: debian-rules-is-dh_make-template
-libwila-dev source: no-debian-changes
-libwila-dev source: empty-short-license-in-dep5-copyright (line 10)
-libwila-dev source: missing-field-in-dep5-copyright License (paragraph at line 6)
-libwila-dev source: no-newline-at-end debian/control
+wila source: debian-rules-is-dh_make-template
+wila source: no-debian-changes
+wila source: empty-short-license-in-dep5-copyright (line 10)
+wila source: missing-field-in-dep5-copyright License (paragraph at line 6)
+wila source: no-newline-at-end debian/control

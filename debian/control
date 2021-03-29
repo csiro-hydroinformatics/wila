@@ -1,18 +1,18 @@
-Source: libwila-dev
+Source: wila
 Maintainer: Jean-Michel Perraud <per202@csiro.au>
 Section: libdevel
 # Testsuite: autopkgtest-pkg-r
 Priority: optional
 Build-Depends: cmake,
-               debhelper (>= 13~),
-	           debhelper-compat (= 13),
-               catch,
+               debhelper (>= 11~),
+               debhelper-compat (= 11),
+#               catch,
                libboost-date-time-dev,
                libboost-system-dev,
                libtbb-dev,
                libboost-threadpool-dev,
                libcinterop-dev,
-               libconfig-utils-dev
+#               libconfig-utils-dev
 Standards-Version: 4.5.0
 Homepage: https://github.com/csiro-hydroinformatics/threadpool
 Rules-Requires-Root: no
@@ -27,7 +27,7 @@ Depends: ${misc:Depends},
          libtbb-dev,
          libboost-threadpool-dev,
          libcinterop-dev,
-         libconfig-utils-dev
+#         libconfig-utils-dev
 Conflicts: libwila-dev
 Description: Metaheuristics optimisation framework
  This framework is designed to incorporate the state of the art
