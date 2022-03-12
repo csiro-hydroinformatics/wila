@@ -70,6 +70,6 @@ ADD_EXECUTABLE(${this_target} ${${this_target}_SOURCE_FILES} )
 ## section: set link libraries
 TARGET_LINK_LIBRARIES( ${this_target}
 	${Boost_LIBRARIES}
-	${TBB_LIBRARIES}
+	TBB::tbb
 )
 
