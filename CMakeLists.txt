@@ -72,13 +72,25 @@ if (CMAKE_BUILD_TYPE STREQUAL "Coverage")
     INCLUDE(CodeCoverage)
 endif()
 
+IF(DEFINED ENV{WILA_CMAKE_VERBOSE})
+    message ("before testing: TBB_FOUND=${TBB_FOUND}")
+ENDIF()
+
 if(NOT TBB_FOUND) # Trying to fix appveyor build, which seems not to find FindTBB.cmake. 
 find_package(TBB REQUIRED)
 ENDIF()
 #find_path(TBB_INCLUDE_DIRS concurrent_vector.h PATH_SUFFIXES tbb)
 #message ("The path to the TBB headers is ${TBB_INCLUDE_DIRS}")
 #find_library (TBB_LIBRARIES NAMES tbb)
-message ("The path to the Thread Building Blocks (tbb) library is ${TBB_LIBRARIES}")
+
+IF(DEFINED ENV{WILA_CMAKE_VERBOSE})
+	message ("The path to the boost headers is ${Boost_INCLUDE_DIRS}")
+	message ("The path to the boost libraries is ${Boost_LIBRARIES}")
+	message ("TBB_FOUND=${TBB_FOUND}")
+	message ("The path to the TBB headers is ${TBB_INCLUDE_DIRS}")
+	message ("The path to the TBB libraries is ${TBB_LIBRARIES}")
+	message ("The path to the threadpool headers is ${threadpool_INCLUDE_DIRS}")
+ENDIF()
 
 find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
 find_path (cinterop_INCLUDE_DIRS cinterop/common_c_interop.h)
@@ -116,7 +128,7 @@ TARGET_LINK_LIBRARIES(wila_tests
     pthread
     ${this_target}
     ${Boost_LIBRARIES}
-    ${TBB_LIBRARIES}
+    TBB::tbb
 )
 
 # Files to be installed
