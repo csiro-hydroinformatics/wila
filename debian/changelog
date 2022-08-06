@@ -1,3 +1,10 @@
+wila (0.7-2) unstable; urgency=medium
+
+  * Match soversion from cmake
+  * C-compatible typedef declaration of OptimizerLogData
+
+ -- Jean-Michel Perraud <per202@csiro.au>  Sat, 06 Aug 2022 18:25:07 +1000
+
 wila (0.7-1) unstable; urgency=medium
 
   * Initial release, testing debian packaging
