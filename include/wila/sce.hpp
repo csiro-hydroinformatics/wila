@@ -721,7 +721,7 @@ namespace mhcpp
 			void loggerWrite(const T& point, const std::map<string, string>& ctags)
 			{
 			    if (logger != nullptr)
-			        logger.Write(point, ctags);
+			        logger->Write(point, ctags);
 			}
 
 			void loggerWrite(const IObjectiveScores<T>& point, const std::map<string, string>& ctags)
@@ -964,7 +964,8 @@ namespace mhcpp
 				return LoggerMhHelper::MergeDictionaries<>(LoggerMhHelper::CreateTag(tuples), this->tags);
 			}
 
-			friend SubComplex<T>::SubComplex(Complex&);
+			// friend SubComplex<T>::SubComplex(Complex&);
+			friend SubComplex<T>;
 
 			std::vector<IObjectiveScores<T>> scores;
 			int q = 10;
