@@ -30,7 +30,7 @@ find_path(THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp PATHS threadpool ../threa
 
 INCLUDE_DIRECTORIES(
     ../include
-    ${Boost_INCLUDE_DIRS}
+    ${BOOST_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
 )
@@ -69,7 +69,7 @@ ADD_EXECUTABLE(${this_target} ${${this_target}_SOURCE_FILES} )
 
 ## section: set link libraries
 TARGET_LINK_LIBRARIES( ${this_target}
-	${Boost_LIBRARIES}
+	${BOOST_LIBRARIES}
 	TBB::tbb
 )
 

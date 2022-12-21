@@ -84,29 +84,29 @@ ENDIF()
 #find_library (TBB_LIBRARIES NAMES tbb)
 
 find_path (THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp)
-find_path (cinterop_INCLUDE_DIRS cinterop/common_c_interop.h)
-find_path (catch_INCLUDE_DIRS NAMES catch/catch.hpp )
+find_path (CINTEROP_INCLUDE_DIRS cinterop/common_c_interop.h)
+find_path (CATCH_INCLUDE_DIRS NAMES catch/catch.hpp )
 
 IF(DEFINED ENV{WILA_CMAKE_VERBOSE})
-	message ("The path to the boost headers is ${Boost_INCLUDE_DIRS}")
-	message ("The path to the boost libraries is ${Boost_LIBRARIES}")
+	message ("The path to the boost headers is ${BOOST_INCLUDE_DIRS}")
+	message ("The path to the boost libraries is ${BOOST_LIBRARIES}")
 	message ("TBB_FOUND=${TBB_FOUND}")
-	message ("The path to the TBB headers is ${TBB_INCLUDE_DIRS}")
-	message ("The path to the TBB libraries is ${TBB_LIBRARIES}")
-	message ("The path to the threadpool headers is ${threadpool_INCLUDE_DIRS}")
-	message ("The path to the cinterop headers is ${cinterop_INCLUDE_DIRS}")
-	message ("The path to the catch headers is ${catch_INCLUDE_DIRS}")
+	# message ("The path to the TBB headers is ${TBB_INCLUDE_DIRS}")
+	# message ("The path to the TBB libraries is ${TBB_LIBRARIES}")
+	message ("The path to the threadpool headers is ${THREADPOOL_INCLUDE_DIRS}")
+	message ("The path to the cinterop headers is ${CINTEROP_INCLUDE_DIRS}")
+	message ("The path to the catch headers is ${CATCH_INCLUDE_DIRS}")
 ENDIF()
 
 
 INCLUDE_DIRECTORIES(
     ./include
     ./include/wila
-    ${Boost_INCLUDE_DIRS}
+    ${BOOST_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
-    ${catch_INCLUDE_DIRS}
-    ${cinterop_INCLUDE_DIRS}
+    ${CATCH_INCLUDE_DIRS}
+    ${CINTEROP_INCLUDE_DIRS}
 )
 
 ## section: precompiled header
@@ -130,7 +130,7 @@ ADD_EXECUTABLE(wila_tests tests/common.cpp tests/main.cpp)
 TARGET_LINK_LIBRARIES(wila_tests
     pthread
     ${this_target}
-    ${Boost_LIBRARIES}
+    ${BOOST_LIBRARIES}
     TBB::tbb
 )
 
