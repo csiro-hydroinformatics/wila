@@ -57,7 +57,7 @@ SET (${this_target}_SOURCE_FILES
 # CENTOS 5 or 6:
 #     cmake -DBOOST_INCLUDEDIR=/usr/include/boost148 \
 #           -DBOOST_LIBRARYDIR=/usr/lib64/boost148 .
-find_package(boost 1.48.0 COMPONENTS system date_time thread REQUIRED)
+find_package(Boost 1.48.0 COMPONENTS system date_time thread REQUIRED)
 
 IF(DEFINED ENV{INTEL_CC_HOME})
   message("Found env var INTEL_CC_HOME, using TBB_ROOT_DIR=$ENV{INTEL_CC_HOME}/tbb as a hint for TBB package discovery")
@@ -88,8 +88,8 @@ find_path (CINTEROP_INCLUDE_DIRS cinterop/common_c_interop.h)
 find_path (CATCH_INCLUDE_DIRS NAMES catch/catch.hpp )
 
 IF(DEFINED ENV{WILA_CMAKE_VERBOSE})
-	message ("The path to the boost headers is ${boost_INCLUDE_DIRS}")
-	message ("The path to the boost libraries is ${boost_LIBRARIES}")
+	message ("The path to the boost headers is ${Boost_INCLUDE_DIRS}")
+	message ("The path to the boost libraries is ${Boost_LIBRARIES}")
 	message ("TBB_FOUND=${TBB_FOUND}")
 	# message ("The path to the TBB headers is ${TBB_INCLUDE_DIRS}")
 	# message ("The path to the TBB libraries is ${TBB_LIBRARIES}")
@@ -102,7 +102,7 @@ ENDIF()
 INCLUDE_DIRECTORIES(
     ./include
     ./include/wila
-    ${boost_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
     ${CATCH_INCLUDE_DIRS}
@@ -130,7 +130,7 @@ ADD_EXECUTABLE(wila_tests tests/common.cpp tests/main.cpp)
 TARGET_LINK_LIBRARIES(wila_tests
     pthread
     ${this_target}
-    ${boost_LIBRARIES}
+    ${Boost_LIBRARIES}
     TBB::tbb
 )
 
