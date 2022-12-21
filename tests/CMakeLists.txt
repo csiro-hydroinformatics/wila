@@ -10,7 +10,7 @@ PROJECT(${this_target})
 # CENTOS 5 or 6:
 #     cmake -DBOOST_INCLUDEDIR=/usr/include/boost148 \
 #           -DBOOST_LIBRARYDIR=/usr/lib64/boost148 .
-find_package(Boost 1.48.0 COMPONENTS system date_time thread REQUIRED)
+find_package(boost 1.48.0 COMPONENTS system date_time thread REQUIRED)
 
 IF(DEFINED ENV{INTEL_CC_HOME})
   message("Found env var INTEL_CC_HOME, using TBB_ROOT_DIR=$ENV{INTEL_CC_HOME}/tbb as a hint for TBB package discovery")
@@ -30,7 +30,7 @@ find_path(THREADPOOL_INCLUDE_DIRS boost/threadpool.hpp PATHS threadpool ../threa
 
 INCLUDE_DIRECTORIES(
     ../include
-    ${BOOST_INCLUDE_DIRS}
+    ${boost_INCLUDE_DIRS}
     ${TBB_INCLUDE_DIRS}
     ${THREADPOOL_INCLUDE_DIRS}
 )
@@ -69,7 +69,7 @@ ADD_EXECUTABLE(${this_target} ${${this_target}_SOURCE_FILES} )
 
 ## section: set link libraries
 TARGET_LINK_LIBRARIES( ${this_target}
-	${BOOST_LIBRARIES}
+	${boost_LIBRARIES}
 	TBB::tbb
 )
 
